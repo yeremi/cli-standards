@@ -1,0 +1,49 @@
+name: Sniff proposal
+description: Propose a new sniff or a meaningful enhancement to an existing rule
+title: "[Proposal]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the CLI design problem clearly
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: Proposed rule
+      description: Describe the rule and whether it should be blocking or advisory
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Expected severity
+      options:
+        - Error (blocking)
+        - Warning (advisory)
+    validations:
+      required: true
+  - type: textarea
+    id: static_detection
+    attributes:
+      label: Static detection strategy
+      description: Explain how PHPCS could detect this without deep runtime semantics
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Provide failing and passing examples if possible
+      render: php
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Risks or tradeoffs
+      description: Expected false positives, false negatives, or adoption concerns

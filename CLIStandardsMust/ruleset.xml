@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ruleset name="CLIStandardsMust" namespace="CLIStandardsMust">
+    <description>Runs only the blocking CLIStandards rules, excluding advisory checks to simplify initial adoption in CI.</description>
+
+    <rule ref="../CLIStandards/ruleset.xml">
+        <exclude name="CLIStandards.Arguments.FlagExtraction"/>
+        <exclude name="CLIStandards.Output.StdoutStderr"/>
+        <exclude name="CLIStandards.Output.FormatSupport"/>
+        <exclude name="CLIStandards.Output.AvailableFields"/>
+        <exclude name="CLIStandards.ErrorHandling.WpErrorHandling"/>
+        <exclude name="CLIStandards.Safety.DryRunSupport"/>
+        <exclude name="CLIStandards.Scalability.BatchProcessing"/>
+        <exclude name="CLIStandards.Scalability.ProgressBar"/>
+        <exclude name="CLIStandards.Scalability.BatchSizeFlag"/>
+        <exclude name="CLIStandards.Documentation.SinceAnnotation"/>
+    </rule>
+</ruleset>

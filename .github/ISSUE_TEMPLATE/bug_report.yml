@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a false positive, false negative, or other problem in the standard
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue type
+      options:
+        - False positive
+        - False negative
+        - Installation/setup problem
+        - Documentation problem
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: standard
+    attributes:
+      label: Standard used
+      description: Example: CLIStandards or CLIStandardsMust
+      placeholder: CLIStandards
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: PHPCS command
+      description: Paste the exact command you ran
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: code_sample
+    attributes:
+      label: Minimal reproduction
+      description: Paste the smallest code sample that reproduces the problem
+      render: php
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the reported sniff code and message when possible
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: PHP version, PHPCS version, package version
+      placeholder: PHP 8.3, PHPCS 3.13.5, yeremi/cli-standards 1.0.0

@@ -1,0 +1,55 @@
+{
+    "name": "yeremi/cli-standards",
+    "description": "PHPCS standards for CLI command design, currently focused on WP-CLI code, with blocking and advisory sniffs for safety, automation, output, and documentation.",
+    "type": "phpcodesniffer-standard",
+    "license": "MIT",
+    "keywords": [
+        "phpcs",
+        "phpcodesniffer",
+        "wordpress",
+        "wp-cli",
+        "coding-standards",
+        "static-analysis",
+        "cli"
+    ],
+    "homepage": "https://github.com/yeremi/cli-standards",
+    "authors": [
+        {
+            "name": "Yeremi Loli",
+            "role": "Author",
+            "homepage": "https://github.com/yeremi"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/yeremi/cli-standards/issues",
+        "source": "https://github.com/yeremi/cli-standards"
+    },
+    "require": {
+        "php": ">=7.4",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "CLIStandards\\": "CLIStandards/"
+        }
+    },
+    "scripts": {
+        "test": "php scripts/verify-fixtures.php",
+        "test:fixtures": "@test",
+        "test:fixtures:verbose": "php scripts/verify-fixtures.php --verbose"
+    },
+    "scripts-descriptions": {
+        "test": "Run the fixture-based regression suite for the CLIStandards standard.",
+        "test:fixtures": "Alias for the fixture-based regression suite.",
+        "test:fixtures:verbose": "Run the fixture-based regression suite with per-fixture details."
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<ruleset name="CLIStandards" namespace="CLIStandards">
+    <description>Enforces CLI command design rules based on the CLI Standards model. Focused on reliability, safety, and automation readiness for WP_CLI-based command code.</description>
+
+    <!--
+        This standard is currently tuned for WP_CLI-based command code.
+        Most sniffs activate only when WP_CLI usage is detected.
+
+        Blocking rules map to MUST requirements.
+        Advisory rules map to SHOULD requirements.
+    -->
+
+    <!-- Command Structure -->
+    <rule ref="CLIStandards.CommandStructure.CommandRegistration">
+        <type>error</type>
+    </rule>
+
+    <!-- Arguments -->
+    <rule ref="CLIStandards.Arguments.FlagNaming">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Arguments.FlagExtraction">
+        <type>warning</type>
+    </rule>
+
+    <!-- Output -->
+    <rule ref="CLIStandards.Output.OutputMethod">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Output.StdoutStderr">
+        <type>warning</type>
+    </rule>
+    <rule ref="CLIStandards.Output.FormatSupport">
+        <type>warning</type>
+    </rule>
+    <rule ref="CLIStandards.Output.AvailableFields">
+        <type>warning</type>
+    </rule>
+
+    <!-- Error Handling -->
+    <rule ref="CLIStandards.ErrorHandling.ErrorSeverity">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.ErrorHandling.WpErrorHandling">
+        <type>warning</type>
+    </rule>
+
+    <!-- Safety -->
+    <rule ref="CLIStandards.Safety.ConfirmOnDelete">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Safety.ConfirmPassthrough">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Safety.DryRunSupport">
+        <type>warning</type>
+    </rule>
+
+    <!-- Scalability -->
+    <rule ref="CLIStandards.Scalability.BatchProcessing">
+        <type>warning</type>
+    </rule>
+    <rule ref="CLIStandards.Scalability.ProgressBar">
+        <type>warning</type>
+    </rule>
+    <rule ref="CLIStandards.Scalability.BatchSizeFlag">
+        <type>warning</type>
+    </rule>
+
+    <!-- Documentation -->
+    <rule ref="CLIStandards.Documentation.DocblockOptions">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Documentation.DocblockExamples">
+        <type>error</type>
+    </rule>
+    <rule ref="CLIStandards.Documentation.SinceAnnotation">
+        <type>warning</type>
+    </rule>
+
+    <!-- Default exclusions -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+</ruleset>
