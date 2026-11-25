@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="IgnoreClassesFixture">
+    <description>Fixture ruleset: DocblockOptions with an ignoreClasses list (fully qualified name).</description>
+
+    <rule ref="CLIStandards.Documentation.DocblockOptions">
+        <properties>
+            <property name="ignoreClasses" type="array">
+                <element value="Acme\Cli\Legacy_Command"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

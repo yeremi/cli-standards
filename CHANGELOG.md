@@ -29,6 +29,8 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - `unboundedSources` ruleset property on `ProgressBar` (#4)
 - `destructiveFunctions` ruleset property on `ConfirmOnDelete` and `DryRunSupport` (#15)
 - Classification fixtures (#15)
+- `ignoreClasses` ruleset property and `@cli-standards not-a-command` class tag to opt support classes out of command detection (#35)
+- Classes fixtures (#35)
 - `@cli-standards confirm-delegated|dry-run-delegated|format-delegated <reason>` docblock tags to declare delegation to other classes (#16)
 - Delegation fixtures (#16)
 - Registration fixtures (#19)
@@ -59,6 +61,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - `CommandRegistration` accepts a single-word name for a class command group (`WP_CLI::add_command( 'acme', Acme_Command::class )`), since its methods are the namespaced subcommands; it still reports groups named after a WP-CLI core command such as `user` or `cache` (#32)
 - `OutputMethod` only reports `echo`/`print` in command handlers and the same-class methods they call, not in web code (admin notices, screens) of files that also register commands (#33)
 - `DocblockOptions` only requires `## OPTIONS` when the command reads its positional or associative arguments (in its body or in same-class helpers it calls); commands without arguments still need a docblock and `## EXAMPLES` (#34)
+- Methods of helper classes are no longer commands: a class must extend or implement a `Command` type, have `Command`/`CLI` in its name, or be in a file that registers commands (#35)
 
 ## [1.0.0] - 2026-04-23
 
