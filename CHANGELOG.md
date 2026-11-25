@@ -6,8 +6,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### Requirements
+
+- PHP_CodeSniffer 4 is supported. The minimum PHP_CodeSniffer version is now 3.13.6 (was 3.7), and `phpcsstandards/phpcsutils` (^1.2) is a new dependency (#20)
+
 ### May add reports
 
+- `WpErrorHandling` reports a fully qualified call assigned to a variable (`$term = \wp_insert_term( ... )`) as `UncheckedWpError` instead of `UncapturedWpError` on PHP_CodeSniffer 3, as PHP_CodeSniffer 4 does; `phpcs:ignore` annotations for the old code need updating (#20)
 - New advisory sniff `CLIStandards.Documentation.DocumentedFlags` (warnings, not in `CLIStandardsMust`): `UndocumentedFlag` for flags a command reads but does not document in its synopsis, `UnusedFlag` for documented flags it never reads (#17)
 
 ### Added
@@ -20,6 +25,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Fixed
 
+- With PHP_CodeSniffer 4, namespaced and fully qualified names (`\WP_CLI::confirm()`, `WP_CLI\Utils\format_items()`, `Utils\get_flag_value()`, `\wp_die()`, `\get_posts()`, ...) are recognized like plain ones (#20)
 - Registration bootstraps that call `WP_CLI::add_command()` through a same-class helper (and take no assoc args) are no longer treated as commands (#45)
 
 ## [1.1.0] - 2026-11-25

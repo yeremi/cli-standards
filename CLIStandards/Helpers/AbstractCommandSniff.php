@@ -520,8 +520,9 @@ abstract class AbstractCommandSniff implements Sniff
             }
         }
 
+        $nameTokens = Names::nameTokens();
         for ($i = $start; $i <= $end; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING) {
+            if (!isset($nameTokens[$tokens[$i]['code']])) {
                 continue;
             }
 
@@ -530,7 +531,7 @@ abstract class AbstractCommandSniff implements Sniff
                 continue;
             }
 
-            $name = strtolower($tokens[$i]['content']);
+            $name = strtolower((string) Names::lastSegment($tokens[$i]));
             $prev = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
             $isMethodCall = $prev !== false
                 && ($tokens[$prev]['code'] === T_OBJECT_OPERATOR || $tokens[$prev]['code'] === T_NULLSAFE_OBJECT_OPERATOR);
@@ -539,7 +540,7 @@ abstract class AbstractCommandSniff implements Sniff
                 $isDeclarationOrStatic = $prev !== false
                     && in_array($tokens[$prev]['code'], [T_FUNCTION, T_DOUBLE_COLON, T_NEW], true);
                 if (!$isDeclarationOrStatic && in_array($name, $functions, true)) {
-                    return $tokens[$i]['content'] . '()';
+                    return Names::lastSegment($tokens[$i]) . '()';
                 }
                 continue;
             }
@@ -670,7 +671,7 @@ abstract class AbstractCommandSniff implements Sniff
             $open  = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
 
             if ($class === false || $tokens[$colon]['code'] !== T_DOUBLE_COLON
-                || $tokens[$class]['content'] !== 'WP_CLI'
+                || !Names::isWpCliClass($tokens[$class])
                 || $open === false || !isset($tokens[$open]['parenthesis_closer'])
             ) {
                 continue;
@@ -1243,7 +1244,7 @@ abstract class AbstractCommandSniff implements Sniff
 
             $colon = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
             $class = ($colon !== false) ? $phpcsFile->findPrevious(T_WHITESPACE, ($colon - 1), null, true) : false;
-            if ($class !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON && $tokens[$class]['content'] === 'WP_CLI') {
+            if ($class !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON && Names::isWpCliClass($tokens[$class])) {
                 return true;
             }
         }
@@ -1417,18 +1418,18 @@ abstract class AbstractCommandSniff implements Sniff
                 continue;
             }
 
-            if ($code !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (Names::isWpCliNamespaced($phpcsFile, $i)) {
+                // Namespaced API, e.g. WP_CLI\Utils\format_items().
+                $usage[$key] = true;
+                continue;
+            }
+
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 
             $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
             if ($next === false) {
-                continue;
-            }
-
-            if ($tokens[$next]['code'] === T_NS_SEPARATOR) {
-                // Namespaced API, e.g. WP_CLI\Utils\format_items().
-                $usage[$key] = true;
                 continue;
             }
 

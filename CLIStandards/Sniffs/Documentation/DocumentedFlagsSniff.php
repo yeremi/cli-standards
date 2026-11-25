@@ -21,8 +21,9 @@
 namespace CLIStandards\Sniffs\Documentation;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
+use PHPCSUtils\BackCompat\BCTokens;
 use PHP_CodeSniffer\Files\File;
-use PHP_CodeSniffer\Util\Tokens;
 
 class DocumentedFlagsSniff extends AbstractCommandSniff
 {
@@ -349,7 +350,7 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
 
             // unset( $assoc_args['name'] ) and $assoc_args['name'] = ... write, not read.
             $after = $phpcsFile->findNext(T_WHITESPACE, ($tokens[$next]['bracket_closer'] + 1), null, true);
-            if (($after !== false && isset(Tokens::$assignmentTokens[$tokens[$after]['code']]))
+            if (($after !== false && isset(BCTokens::assignmentTokens()[$tokens[$after]['code']]))
                 || $this->isUnsetArgument($phpcsFile, $variablePtr)
             ) {
                 return ['', $variablePtr];
@@ -366,7 +367,7 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
         $parentheses = $tokens[$variablePtr]['nested_parenthesis'];
         $open        = (int) array_key_last($parentheses);
         $function    = $phpcsFile->findPrevious(T_WHITESPACE, ($open - 1), null, true);
-        if ($function === false || $tokens[$function]['code'] !== T_STRING) {
+        if ($function === false || Names::lastSegment($tokens[$function]) === null) {
             return null;
         }
 
@@ -378,7 +379,7 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
             }
         }
 
-        $callee = strtolower($tokens[$function]['content']);
+        $callee = strtolower((string) Names::lastSegment($tokens[$function]));
 
         if ($callee === 'get_flag_value' && $position === 0 && isset($arguments[1])) {
             return $this->literalKey($phpcsFile, $arguments[1], $variablePtr);
@@ -391,7 +392,7 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
         if ($callee === 'confirm' && $position === 1) {
             $colon = $phpcsFile->findPrevious(T_WHITESPACE, ($function - 1), null, true);
             $class = ($colon !== false) ? $phpcsFile->findPrevious(T_WHITESPACE, ($colon - 1), null, true) : false;
-            if ($class !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON && $tokens[$class]['content'] === 'WP_CLI') {
+            if ($class !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON && Names::isWpCliClass($tokens[$class])) {
                 return ['yes', $variablePtr];
             }
         }

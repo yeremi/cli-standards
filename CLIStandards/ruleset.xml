@@ -10,6 +10,9 @@
         Advisory rules map to SHOULD requirements.
     -->
 
+    <!-- Utility library used by the sniffs (PHPCS 3 and 4 token compatibility). -->
+    <rule ref="PHPCSUtils"/>
+
     <!-- Command Structure -->
     <rule ref="CLIStandards.CommandStructure.CommandRegistration">
         <type>error</type>

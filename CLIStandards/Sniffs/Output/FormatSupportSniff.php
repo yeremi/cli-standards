@@ -20,6 +20,7 @@
 namespace CLIStandards\Sniffs\Output;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
 
 class FormatSupportSniff extends AbstractCommandSniff
@@ -117,7 +118,7 @@ class FormatSupportSniff extends AbstractCommandSniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'format_items') {
+            if (Names::lastSegment($tokens[$i]) === 'format_items') {
                 return true;
             }
 

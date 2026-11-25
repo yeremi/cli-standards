@@ -21,8 +21,9 @@
 
 namespace CLIStandards\Sniffs\ErrorHandling;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
+use PHP_CodeSniffer\Sniffs\Sniff;
 
 class ErrorSeveritySniff implements Sniff
 {
@@ -43,6 +44,7 @@ class ErrorSeveritySniff implements Sniff
         return [
             T_EXIT,     // Covers both exit() and die().
             T_STRING,   // Catches wp_die() function calls.
+            T_NAME_FULLY_QUALIFIED, // \wp_die() with PHPCS 4.
         ];
     }
 
@@ -92,7 +94,7 @@ class ErrorSeveritySniff implements Sniff
         }
 
         // Check for wp_die() calls.
-        if ($token['code'] === T_STRING && strtolower($token['content']) === 'wp_die') {
+        if (strtolower((string) Names::lastSegment($token)) === 'wp_die') {
             // Verify it's actually a function call (followed by open parenthesis).
             $next = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
             if ($next !== false && $tokens[$next]['code'] === T_OPEN_PARENTHESIS) {
@@ -117,7 +119,7 @@ class ErrorSeveritySniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 

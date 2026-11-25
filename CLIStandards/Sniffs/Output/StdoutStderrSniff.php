@@ -22,8 +22,9 @@
 
 namespace CLIStandards\Sniffs\Output;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
+use PHP_CodeSniffer\Sniffs\Sniff;
 
 class StdoutStderrSniff implements Sniff
 {
@@ -61,16 +62,17 @@ class StdoutStderrSniff implements Sniff
         $logPosition    = 0;
 
         for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING) {
+            $segment = Names::lastSegment($tokens[$i]);
+            if ($segment === null) {
                 continue;
             }
 
             // Detect WP_CLI::log().
-            if ($tokens[$i]['content'] === 'log') {
+            if ($tokens[$i]['code'] === T_STRING && $segment === 'log') {
                 $doubleColon = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
                 if ($doubleColon !== false && $tokens[$doubleColon]['code'] === T_DOUBLE_COLON) {
                     $className = $phpcsFile->findPrevious(T_WHITESPACE, ($doubleColon - 1), null, true);
-                    if ($className !== false && $tokens[$className]['content'] === 'WP_CLI') {
+                    if ($className !== false && Names::isWpCliClass($tokens[$className])) {
                         $hasLog      = true;
                         $logPosition = $i;
                     }
@@ -78,7 +80,7 @@ class StdoutStderrSniff implements Sniff
             }
 
             // Detect format_items().
-            if ($tokens[$i]['content'] === 'format_items') {
+            if ($segment === 'format_items') {
                 $hasFormatItems = true;
             }
         }

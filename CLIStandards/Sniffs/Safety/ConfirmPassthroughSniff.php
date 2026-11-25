@@ -17,6 +17,7 @@
 namespace CLIStandards\Sniffs\Safety;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
 
 class ConfirmPassthroughSniff extends AbstractCommandSniff
@@ -156,7 +157,7 @@ class ConfirmPassthroughSniff extends AbstractCommandSniff
 
         // Look for WP_CLI before the ::.
         $className = $phpcsFile->findPrevious(T_WHITESPACE, ($doubleColon - 1), null, true);
-        if ($className === false || $tokens[$className]['content'] !== 'WP_CLI') {
+        if ($className === false || !Names::isWpCliClass($tokens[$className])) {
             return false;
         }
 

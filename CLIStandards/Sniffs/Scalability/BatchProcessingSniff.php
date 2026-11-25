@@ -23,8 +23,9 @@
 
 namespace CLIStandards\Sniffs\Scalability;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
+use PHP_CodeSniffer\Sniffs\Sniff;
 
 class BatchProcessingSniff implements Sniff
 {
@@ -136,7 +137,7 @@ class BatchProcessingSniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 
