@@ -52,6 +52,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Docblocks followed by PHP 8 attributes (`#[...]`) are now found, removing false `MissingDocblock` errors (#6)
 - `WpErrorHandling` no longer reports functions that never return `WP_Error` (`wp_delete_post()`, `wp_delete_user()`, `wp_create_category()`, `wp_upload_bits()`, `wp_handle_upload()`), and only reports `wp_insert_post()`, `wp_update_post()` and `wp_insert_attachment()` when their `$wp_error` argument is passed and not `false` (#25)
 - `ErrorSeverity` ignores `exit`/`die` at file scope, such as the `if ( ! defined( 'ABSPATH' ) ) { exit; }` direct-access guard (#29)
+- Methods that call `WP_CLI::add_command()` and take no assoc-args parameter are registration bootstraps, not commands, even when they also log; `WP_CLI::class` no longer counts as a WP-CLI call; `ProgressBar` ignores loops that only register commands (#30)
 
 ## [1.0.0] - 2026-04-23
 

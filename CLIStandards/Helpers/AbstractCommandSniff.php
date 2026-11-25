@@ -160,8 +160,12 @@ abstract class AbstractCommandSniff implements Sniff
             $tokens[$functionPtr]['scope_closer']
         );
 
-        // Methods that only register commands are bootstraps, not commands.
-        if ($usage['registration'] && !$usage['direct']) {
+        // Methods that register commands are bootstraps, not commands, when they
+        // do nothing else with WP-CLI or do not take the assoc args: command
+        // handlers receive ( $args, $assoc_args ), registrars usually nothing.
+        if ($usage['registration']
+            && (!$usage['direct'] || $this->getAssocArgsName($phpcsFile, $functionPtr) === null)
+        ) {
             return false;
         }
 
@@ -1185,6 +1189,12 @@ abstract class AbstractCommandSniff implements Sniff
             }
 
             $method = $phpcsFile->findNext(T_WHITESPACE, ($next + 1), null, true);
+
+            // WP_CLI::class is a class-name constant, not a WP-CLI call.
+            if ($method !== false && strtolower($tokens[$method]['content']) === 'class') {
+                continue;
+            }
+
             $isRegistration = $method !== false
                 && $tokens[$method]['code'] === T_STRING
                 && in_array(strtolower($tokens[$method]['content']), self::REGISTRATION_METHODS, true);
