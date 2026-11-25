@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-25
+
 ### May add reports
 
 Detection fixes in this release can report violations in code that passed with 1.0.0:
@@ -81,3 +83,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Installation and registration through Composer as a PHPCS standard package
 - Real-world scans on 10 local WP-CLI plugin repositories
 - Equivalence between `CLIStandardsMust` and `CLIStandards --warning-severity=0`
+
+[Unreleased]: https://github.com/yeremi/cli-standards/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/yeremi/cli-standards/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/yeremi/cli-standards/releases/tag/v1.0.0
