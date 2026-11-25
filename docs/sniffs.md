@@ -223,7 +223,7 @@ Properties: ignoreMethods (method names that are never commands), ignoreClasses 
 Never call exit(), die() or wp_die() inside a command: they skip WP-CLI&#039;s shutdown and error reporting, and break WP_CLI::runcommand(). Use WP_CLI::error() for fatal failures and WP_CLI::halt( $code ) to set an exit code. exit at file scope, such as the ABSPATH direct-access guard, is not reported.
 
 Requirement: D1 (MUST, error).
-Error codes: DirectExit.
+Error codes: DirectExit (exit, die), WpDieInCli (wp_die()).
   <table>
    <tr>
     <th>Valid: WP-CLI exit semantics.</th>
