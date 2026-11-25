@@ -26,8 +26,11 @@
 
 namespace CLIStandards\Helpers;
 
+use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
+use PHPCSUtils\BackCompat\BCTokens;
+use PHPCSUtils\Utils\PassedParameters;
 
 abstract class AbstractCommandSniff implements Sniff
 {
@@ -731,20 +734,13 @@ abstract class AbstractCommandSniff implements Sniff
     private function parseRegistrationArgs(File $phpcsFile, array $range): array
     {
         $tokens = $phpcsFile->getTokens();
-        $first  = $range[0];
-
-        if ($tokens[$first]['code'] === T_OPEN_SHORT_ARRAY && isset($tokens[$first]['bracket_closer'])) {
-            $open  = $first;
-            $close = $tokens[$first]['bracket_closer'];
-        } elseif ($tokens[$first]['code'] === T_ARRAY && isset($tokens[$first]['parenthesis_opener'])) {
-            $open  = $tokens[$first]['parenthesis_opener'];
-            $close = $tokens[$open]['parenthesis_closer'];
-        } else {
+        $items  = $this->getArrayItems($phpcsFile, $range[0]);
+        if ($items === null) {
             return [];
         }
 
         $found = [];
-        foreach ($this->splitList($phpcsFile, $open, $close) as [$start, $end]) {
+        foreach ($items as [$start, $end]) {
             $arrow = $phpcsFile->findNext(T_DOUBLE_ARROW, $start, ($end + 1));
             if ($tokens[$start]['code'] !== T_CONSTANT_ENCAPSED_STRING || $arrow === false) {
                 continue;
@@ -864,52 +860,65 @@ abstract class AbstractCommandSniff implements Sniff
      * @param File $phpcsFile The file being scanned.
      * @param int  $open      Position of the call's opening parenthesis.
      *
-     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each argument.
+     * @return array<int, array{0: int, 1: int}> First and last non-whitespace
+     *         token of each argument, in source order. A named argument's
+     *         range starts at its name.
      */
     protected function splitArguments(File $phpcsFile, int $open): array
     {
-        return $this->splitList($phpcsFile, $open, $phpcsFile->getTokens()[$open]['parenthesis_closer']);
+        $name = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($open - 1), null, true);
+
+        return ($name !== false) ? $this->getParameterRanges($phpcsFile, $name) : [];
     }
 
     /**
-     * Split the top-level, comma-separated items between two tokens.
+     * Items of an array literal (`[...]` or `array(...)`) as token ranges.
      *
      * @param File $phpcsFile The file being scanned.
-     * @param int  $open      Opening parenthesis or bracket.
-     * @param int  $close     Matching closer.
+     * @param int  $arrayPtr  Position of the T_OPEN_SHORT_ARRAY or T_ARRAY token.
      *
-     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each item.
+     * @return array<int, array{0: int, 1: int}>|null Null when the token does
+     *         not start an array literal.
      */
-    protected function splitList(File $phpcsFile, int $open, int $close): array
+    protected function getArrayItems(File $phpcsFile, int $arrayPtr): ?array
     {
-        $tokens    = $phpcsFile->getTokens();
-        $arguments = [];
-        $start     = $open + 1;
+        $code = $phpcsFile->getTokens()[$arrayPtr]['code'];
+        if ($code !== T_OPEN_SHORT_ARRAY && $code !== T_ARRAY) {
+            return null;
+        }
 
-        for ($i = $start; $i <= $close; $i++) {
-            if ($i < $close && isset($tokens[$i]['parenthesis_closer']) && $tokens[$i]['code'] === T_OPEN_PARENTHESIS) {
-                $i = $tokens[$i]['parenthesis_closer'];
-                continue;
-            }
+        return $this->getParameterRanges($phpcsFile, $arrayPtr);
+    }
 
-            if ($i < $close && isset($tokens[$i]['bracket_closer'])
-                && in_array($tokens[$i]['code'], [T_OPEN_SHORT_ARRAY, T_OPEN_SQUARE_BRACKET, T_OPEN_CURLY_BRACKET], true)
-            ) {
-                $i = $tokens[$i]['bracket_closer'];
-                continue;
-            }
+    /**
+     * Parameters of a call, or items of an array, through PHPCSUtils.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Function name, T_ARRAY or T_OPEN_SHORT_ARRAY token.
+     *
+     * @return array<int, array{0: int, 1: int}>
+     */
+    private function getParameterRanges(File $phpcsFile, int $stackPtr): array
+    {
+        try {
+            $parameters = PassedParameters::getParameters($phpcsFile, $stackPtr);
+        } catch (RuntimeException $e) {
+            // Not something that takes parameters, e.g. `( $callable )( ... )`.
+            return [];
+        }
 
-            if ($i === $close || $tokens[$i]['code'] === T_COMMA) {
-                $first = $phpcsFile->findNext(T_WHITESPACE, $start, $i, true);
-                $last  = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), ($start - 1), true);
-                if ($first !== false && $last !== false) {
-                    $arguments[] = [$first, $last];
-                }
-                $start = $i + 1;
+        $ranges = [];
+        foreach ($parameters as $parameter) {
+            $first = $parameter['name_token']
+                ?? $phpcsFile->findNext(T_WHITESPACE, $parameter['start'], ($parameter['end'] + 1), true);
+            $last  = $phpcsFile->findPrevious(T_WHITESPACE, $parameter['end'], ($parameter['start'] - 1), true);
+
+            if ($first !== false && $last !== false) {
+                $ranges[] = [$first, $last];
             }
         }
 
-        return $arguments;
+        return $ranges;
     }
 
     /**

@@ -210,13 +210,13 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
             return $result;
         }
 
-        $list = $this->arrayItems($phpcsFile, $range[0]);
+        $list = $this->getArrayItems($phpcsFile, $range[0]);
         if ($list === null || $tokens[$range[1]]['code'] !== $this->closerCode($tokens[$range[0]]['code'])) {
             return null;
         }
 
         foreach ($list as $entry) {
-            $fields = $this->arrayItems($phpcsFile, $entry[0]);
+            $fields = $this->getArrayItems($phpcsFile, $entry[0]);
             if ($fields === null) {
                 return null;
             }
@@ -435,31 +435,6 @@ class DocumentedFlagsSniff extends AbstractCommandSniff
         $key = $this->literalString($phpcsFile, $range);
 
         return ($key !== null) ? [$key, $range[0]] : ['', $variablePtr];
-    }
-
-    /**
-     * Items of a literal array (`[...]` or `array(...)`).
-     *
-     * @param File $phpcsFile The file being scanned.
-     * @param int  $start     First token of the array.
-     *
-     * @return array<int, array{0: int, 1: int}>|null Null when not an array literal.
-     */
-    private function arrayItems(File $phpcsFile, int $start): ?array
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        if ($tokens[$start]['code'] === T_OPEN_SHORT_ARRAY && isset($tokens[$start]['bracket_closer'])) {
-            return $this->splitList($phpcsFile, $start, $tokens[$start]['bracket_closer']);
-        }
-
-        if ($tokens[$start]['code'] === T_ARRAY && isset($tokens[$start]['parenthesis_opener'])) {
-            $open = $tokens[$start]['parenthesis_opener'];
-
-            return $this->splitList($phpcsFile, $open, $tokens[$open]['parenthesis_closer']);
-        }
-
-        return null;
     }
 
     /**
