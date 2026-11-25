@@ -22,6 +22,7 @@
 namespace CLIStandards\Sniffs\ErrorHandling;
 
 use CLIStandards\Helpers\Names;
+use CLIStandards\Helpers\Scope;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 
@@ -75,7 +76,7 @@ class ErrorSeveritySniff implements Sniff
         // `if ( ! defined( 'ABSPATH' ) ) { exit; }`, which only run when the
         // file is requested directly over HTTP.
         if (!$phpcsFile->hasCondition($stackPtr, [T_FUNCTION, T_CLOSURE])
-            && $this->findEnclosingArrowFunction($phpcsFile, $stackPtr) === false
+            && Scope::enclosingArrowFunction($phpcsFile, $stackPtr) === null
         ) {
             return;
         }
@@ -127,30 +128,6 @@ class ErrorSeveritySniff implements Sniff
             if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
                 return true;
             }
-        }
-
-        return false;
-    }
-
-    /**
-     * Find an arrow function whose body contains a token (arrow functions are
-     * not part of a token's "conditions").
-     *
-     * @param File $phpcsFile The file being scanned.
-     * @param int  $stackPtr  Position of the token.
-     *
-     * @return int|false Position of the T_FN token, or false.
-     */
-    private function findEnclosingArrowFunction(File $phpcsFile, int $stackPtr)
-    {
-        $tokens = $phpcsFile->getTokens();
-        $fn     = $phpcsFile->findPrevious(T_FN, $stackPtr);
-
-        while ($fn !== false) {
-            if (isset($tokens[$fn]['scope_closer']) && $tokens[$fn]['scope_closer'] >= $stackPtr) {
-                return $fn;
-            }
-            $fn = $phpcsFile->findPrevious(T_FN, ($fn - 1));
         }
 
         return false;

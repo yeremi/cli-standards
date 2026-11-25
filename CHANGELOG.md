@@ -6,6 +6,14 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### Changed
+
+- Call arguments, array items, string literals, method scope and declaration names are parsed with PHPCSUtils (`PassedParameters`, `TextStrings`, `Scopes`, `FunctionDeclarations`, `ObjectDeclarations`) instead of hand-written token walking; reports are unchanged (#51)
+
+### Fixed
+
+- Functions declared in an `enum` are treated as methods, like those of classes, traits and interfaces (#51)
+
 ## [1.2.0] - 2026-11-25
 
 ### Requirements

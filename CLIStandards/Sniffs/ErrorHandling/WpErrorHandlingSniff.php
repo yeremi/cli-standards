@@ -22,6 +22,8 @@
 namespace CLIStandards\Sniffs\ErrorHandling;
 
 use CLIStandards\Helpers\Names;
+use PHPCSUtils\Utils\PassedParameters;
+use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 
@@ -138,7 +140,7 @@ class WpErrorHandlingSniff implements Sniff
         // Some functions only return WP_Error when asked to ($wp_error = true).
         $condition = '';
         if (isset(self::CONDITIONAL_WP_ERROR[$functionName])) {
-            if (!$this->requestsWpError($phpcsFile, $next, self::CONDITIONAL_WP_ERROR[$functionName])) {
+            if (!$this->requestsWpError($phpcsFile, $stackPtr, self::CONDITIONAL_WP_ERROR[$functionName])) {
                 return;
             }
             $condition = ' (called with $wp_error = true)';
@@ -271,67 +273,19 @@ class WpErrorHandlingSniff implements Sniff
      * the named argument "wp_error:") and is not the literal false.
      *
      * @param File $phpcsFile The file being scanned.
-     * @param int  $open      Position of the call's opening parenthesis.
+     * @param int  $stackPtr  Position of the function name token.
      * @param int  $position  Zero-based position of the $wp_error argument.
      *
      * @return bool
      */
-    private function requestsWpError(File $phpcsFile, int $open, int $position): bool
+    private function requestsWpError(File $phpcsFile, int $stackPtr, int $position): bool
     {
-        $tokens = $phpcsFile->getTokens();
-        if (!isset($tokens[$open]['parenthesis_closer'])) {
+        try {
+            $parameter = PassedParameters::getParameter($phpcsFile, $stackPtr, ($position + 1), 'wp_error');
+        } catch (RuntimeException $e) {
             return false;
         }
 
-        $close    = $tokens[$open]['parenthesis_closer'];
-        $index    = 0;
-        $argStart = $open + 1;
-
-        for ($i = $argStart; $i <= $close; $i++) {
-            $code = $tokens[$i]['code'];
-
-            if ($i < $close && $code === T_OPEN_PARENTHESIS && isset($tokens[$i]['parenthesis_closer'])) {
-                $i = $tokens[$i]['parenthesis_closer'];
-                continue;
-            }
-
-            if ($i < $close && isset($tokens[$i]['bracket_closer'])
-                && in_array($code, [T_OPEN_SHORT_ARRAY, T_OPEN_SQUARE_BRACKET, T_OPEN_CURLY_BRACKET], true)
-            ) {
-                $i = $tokens[$i]['bracket_closer'];
-                continue;
-            }
-
-            if ($i !== $close && $code !== T_COMMA) {
-                continue;
-            }
-
-            $first = $phpcsFile->findNext(T_WHITESPACE, $argStart, $i, true);
-            if ($first !== false) {
-                $valueStart = $first;
-                $isNamed    = false;
-
-                if ($tokens[$first]['code'] === T_PARAM_NAME) {
-                    $isNamed    = true;
-                    $colon      = $phpcsFile->findNext(T_WHITESPACE, ($first + 1), $i, true);
-                    $valueStart = ($colon !== false) ? $phpcsFile->findNext(T_WHITESPACE, ($colon + 1), $i, true) : false;
-                }
-
-                $matches = $isNamed
-                    ? (strtolower($tokens[$first]['content']) === 'wp_error')
-                    : ($index === $position);
-
-                if ($matches) {
-                    $last = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), $argStart - 1, true);
-
-                    return !($valueStart !== false && $valueStart === $last && $tokens[$valueStart]['code'] === T_FALSE);
-                }
-            }
-
-            $index++;
-            $argStart = $i + 1;
-        }
-
-        return false;
+        return $parameter !== false && strtolower($parameter['clean']) !== 'false';
     }
 }

@@ -18,6 +18,7 @@ namespace CLIStandards\Sniffs\Safety;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
 use CLIStandards\Helpers\Names;
+use PHPCSUtils\Utils\PassedParameters;
 use PHP_CodeSniffer\Files\File;
 
 class ConfirmPassthroughSniff extends AbstractCommandSniff
@@ -67,23 +68,11 @@ class ConfirmPassthroughSniff extends AbstractCommandSniff
 
         $closeParen = $tokens[$openParen]['parenthesis_closer'];
 
-        // Count commas between parentheses to determine argument count.
-        $commaCount  = 0;
-        $nestingLevel = 0;
-
-        for ($i = ($openParen + 1); $i < $closeParen; $i++) {
-            if ($tokens[$i]['code'] === T_OPEN_PARENTHESIS) {
-                $nestingLevel++;
-            } elseif ($tokens[$i]['code'] === T_CLOSE_PARENTHESIS) {
-                $nestingLevel--;
-            } elseif ($tokens[$i]['code'] === T_COMMA && $nestingLevel === 0) {
-                $commaCount++;
-            }
-        }
-
-        // WP_CLI::confirm( message, $assoc_args ) requires 2 args (1 comma),
+        // WP_CLI::confirm( $message, $assoc_args ) needs both arguments,
         // unless the call is guarded by an explicit --yes check.
-        if ($commaCount !== 0 || $this->isGuardedByYesFlag($phpcsFile, $stackPtr)) {
+        if (PassedParameters::getParameterCount($phpcsFile, $stackPtr) >= 2
+            || $this->isGuardedByYesFlag($phpcsFile, $stackPtr)
+        ) {
             return;
         }
 

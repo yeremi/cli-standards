@@ -26,8 +26,15 @@
 
 namespace CLIStandards\Helpers;
 
+use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
+use PHPCSUtils\BackCompat\BCTokens;
+use PHPCSUtils\Utils\FunctionDeclarations;
+use PHPCSUtils\Utils\ObjectDeclarations;
+use PHPCSUtils\Utils\PassedParameters;
+use PHPCSUtils\Utils\Scopes;
+use PHPCSUtils\Utils\TextStrings;
 
 abstract class AbstractCommandSniff implements Sniff
 {
@@ -107,13 +114,6 @@ abstract class AbstractCommandSniff implements Sniff
     private const NESTED_CALLABLES = [T_CLOSURE, T_FUNCTION, T_FN, T_ANON_CLASS];
 
     /**
-     * Class-like scopes in which a function is a method.
-     *
-     * @var array<int|string>
-     */
-    private const OO_SCOPES = [T_CLASS, T_TRAIT, T_ANON_CLASS, T_INTERFACE];
-
-    /**
      * Determine whether a function token declares a WP-CLI command handler.
      *
      * T_FUNCTION: see the class description. T_CLOSURE/T_FN: only when the
@@ -141,7 +141,7 @@ abstract class AbstractCommandSniff implements Sniff
             return false;
         }
 
-        $name = $phpcsFile->getDeclarationName($functionPtr);
+        $name = FunctionDeclarations::getName($phpcsFile, $functionPtr);
         if ($name === null || $name === '') {
             return false;
         }
@@ -478,7 +478,7 @@ abstract class AbstractCommandSniff implements Sniff
             return null;
         }
 
-        return $phpcsFile->getDeclarationName($functionPtr);
+        return FunctionDeclarations::getName($phpcsFile, $functionPtr);
     }
 
     /**
@@ -731,20 +731,13 @@ abstract class AbstractCommandSniff implements Sniff
     private function parseRegistrationArgs(File $phpcsFile, array $range): array
     {
         $tokens = $phpcsFile->getTokens();
-        $first  = $range[0];
-
-        if ($tokens[$first]['code'] === T_OPEN_SHORT_ARRAY && isset($tokens[$first]['bracket_closer'])) {
-            $open  = $first;
-            $close = $tokens[$first]['bracket_closer'];
-        } elseif ($tokens[$first]['code'] === T_ARRAY && isset($tokens[$first]['parenthesis_opener'])) {
-            $open  = $tokens[$first]['parenthesis_opener'];
-            $close = $tokens[$open]['parenthesis_closer'];
-        } else {
+        $items  = $this->getArrayItems($phpcsFile, $range[0]);
+        if ($items === null) {
             return [];
         }
 
         $found = [];
-        foreach ($this->splitList($phpcsFile, $open, $close) as [$start, $end]) {
+        foreach ($items as [$start, $end]) {
             $arrow = $phpcsFile->findNext(T_DOUBLE_ARROW, $start, ($end + 1));
             if ($tokens[$start]['code'] !== T_CONSTANT_ENCAPSED_STRING || $arrow === false) {
                 continue;
@@ -771,6 +764,10 @@ abstract class AbstractCommandSniff implements Sniff
      * Concatenated text of the string literals in a token range, with "\n"
      * escapes of double-quoted strings turned into newlines.
      *
+     * Multi-line literals and heredoc/nowdoc bodies are read whole
+     * (PHPCSUtils TextStrings); other tokens, such as concatenation
+     * operators, are skipped.
+     *
      * @param File $phpcsFile The file being scanned.
      * @param int  $start     First token.
      * @param int  $end       Last token.
@@ -781,32 +778,17 @@ abstract class AbstractCommandSniff implements Sniff
     {
         $tokens = $phpcsFile->getTokens();
         $text   = '';
-        $quoted = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING];
+        $starts = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING, T_START_HEREDOC, T_START_NOWDOC];
 
         for ($i = $start; $i <= $end; $i++) {
-            $code = $tokens[$i]['code'];
-
-            if ($code === T_HEREDOC || $code === T_NOWDOC) {
-                $text .= $tokens[$i]['content'];
+            if (!in_array($tokens[$i]['code'], $starts, true)) {
                 continue;
             }
 
-            if (!in_array($code, $quoted, true)) {
-                continue;
-            }
-
-            // A multi-line string literal is split into one token per line:
-            // join the run before removing the quotes.
-            $raw = '';
-            while ($i <= $end && $tokens[$i]['code'] === $code) {
-                $raw .= $tokens[$i]['content'];
-                $i++;
-            }
-            $i--;
-
-            $quote = $raw[0];
-            $body  = substr($raw, 1, -1);
-            $text .= ($quote === '"') ? str_replace('\\n', "\n", $body) : $body;
+            $body    = TextStrings::getCompleteTextString($phpcsFile, $i);
+            $doubled = $tokens[$i]['content'][0] === '"';
+            $text   .= $doubled ? str_replace('\\n', "\n", $body) : $body;
+            $i       = TextStrings::getEndOfCompleteTextString($phpcsFile, $i);
         }
 
         return $text;
@@ -864,52 +846,65 @@ abstract class AbstractCommandSniff implements Sniff
      * @param File $phpcsFile The file being scanned.
      * @param int  $open      Position of the call's opening parenthesis.
      *
-     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each argument.
+     * @return array<int, array{0: int, 1: int}> First and last non-whitespace
+     *         token of each argument, in source order. A named argument's
+     *         range starts at its name.
      */
     protected function splitArguments(File $phpcsFile, int $open): array
     {
-        return $this->splitList($phpcsFile, $open, $phpcsFile->getTokens()[$open]['parenthesis_closer']);
+        $name = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($open - 1), null, true);
+
+        return ($name !== false) ? $this->getParameterRanges($phpcsFile, $name) : [];
     }
 
     /**
-     * Split the top-level, comma-separated items between two tokens.
+     * Items of an array literal (`[...]` or `array(...)`) as token ranges.
      *
      * @param File $phpcsFile The file being scanned.
-     * @param int  $open      Opening parenthesis or bracket.
-     * @param int  $close     Matching closer.
+     * @param int  $arrayPtr  Position of the T_OPEN_SHORT_ARRAY or T_ARRAY token.
      *
-     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each item.
+     * @return array<int, array{0: int, 1: int}>|null Null when the token does
+     *         not start an array literal.
      */
-    protected function splitList(File $phpcsFile, int $open, int $close): array
+    protected function getArrayItems(File $phpcsFile, int $arrayPtr): ?array
     {
-        $tokens    = $phpcsFile->getTokens();
-        $arguments = [];
-        $start     = $open + 1;
+        $code = $phpcsFile->getTokens()[$arrayPtr]['code'];
+        if ($code !== T_OPEN_SHORT_ARRAY && $code !== T_ARRAY) {
+            return null;
+        }
 
-        for ($i = $start; $i <= $close; $i++) {
-            if ($i < $close && isset($tokens[$i]['parenthesis_closer']) && $tokens[$i]['code'] === T_OPEN_PARENTHESIS) {
-                $i = $tokens[$i]['parenthesis_closer'];
-                continue;
-            }
+        return $this->getParameterRanges($phpcsFile, $arrayPtr);
+    }
 
-            if ($i < $close && isset($tokens[$i]['bracket_closer'])
-                && in_array($tokens[$i]['code'], [T_OPEN_SHORT_ARRAY, T_OPEN_SQUARE_BRACKET, T_OPEN_CURLY_BRACKET], true)
-            ) {
-                $i = $tokens[$i]['bracket_closer'];
-                continue;
-            }
+    /**
+     * Parameters of a call, or items of an array, through PHPCSUtils.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Function name, T_ARRAY or T_OPEN_SHORT_ARRAY token.
+     *
+     * @return array<int, array{0: int, 1: int}>
+     */
+    private function getParameterRanges(File $phpcsFile, int $stackPtr): array
+    {
+        try {
+            $parameters = PassedParameters::getParameters($phpcsFile, $stackPtr);
+        } catch (RuntimeException $e) {
+            // Not something that takes parameters, e.g. `( $callable )( ... )`.
+            return [];
+        }
 
-            if ($i === $close || $tokens[$i]['code'] === T_COMMA) {
-                $first = $phpcsFile->findNext(T_WHITESPACE, $start, $i, true);
-                $last  = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), ($start - 1), true);
-                if ($first !== false && $last !== false) {
-                    $arguments[] = [$first, $last];
-                }
-                $start = $i + 1;
+        $ranges = [];
+        foreach ($parameters as $parameter) {
+            $first = $parameter['name_token']
+                ?? $phpcsFile->findNext(T_WHITESPACE, $parameter['start'], ($parameter['end'] + 1), true);
+            $last  = $phpcsFile->findPrevious(T_WHITESPACE, $parameter['end'], ($parameter['start'] - 1), true);
+
+            if ($first !== false && $last !== false) {
+                $ranges[] = [$first, $last];
             }
         }
 
-        return $arguments;
+        return $ranges;
     }
 
     /**
@@ -928,7 +923,7 @@ abstract class AbstractCommandSniff implements Sniff
             return null;
         }
 
-        return substr($tokens[$range[0]]['content'], 1, -1);
+        return TextStrings::stripQuotes($tokens[$range[0]]['content']);
     }
 
     /**
@@ -1119,7 +1114,7 @@ abstract class AbstractCommandSniff implements Sniff
             $owner = $tokens[$i]['conditions'];
             end($owner);
             if (key($owner) === $classPtr && isset($tokens[$i]['scope_closer'])) {
-                $name = $phpcsFile->getDeclarationName($i);
+                $name = FunctionDeclarations::getName($phpcsFile, $i);
                 if ($name !== null) {
                     $methods[strtolower($name)] = $i;
                 }
@@ -1196,7 +1191,7 @@ abstract class AbstractCommandSniff implements Sniff
             return true;
         }
 
-        $name = (string) $phpcsFile->getDeclarationName($classPtr);
+        $name = (string) ObjectDeclarations::getName($phpcsFile, $classPtr);
 
         if ($this->isIgnoredClass($phpcsFile, $classPtr, $name) || $this->isTaggedNotACommand($phpcsFile, $classPtr)) {
             return false;
@@ -1340,12 +1335,9 @@ abstract class AbstractCommandSniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         // Arrow functions are not part of "conditions"; check them first.
-        $fn = $phpcsFile->findPrevious(T_FN, $stackPtr);
-        while ($fn !== false) {
-            if (isset($tokens[$fn]['scope_closer']) && $tokens[$fn]['scope_closer'] >= $stackPtr) {
-                return $fn;
-            }
-            $fn = $phpcsFile->findPrevious(T_FN, ($fn - 1));
+        $fn = Scope::enclosingArrowFunction($phpcsFile, $stackPtr);
+        if ($fn !== null) {
+            return $fn;
         }
 
         $conditions = array_reverse($tokens[$stackPtr]['conditions'], true);
@@ -1368,16 +1360,7 @@ abstract class AbstractCommandSniff implements Sniff
      */
     private function isMethod(File $phpcsFile, int $functionPtr): bool
     {
-        $tokens     = $phpcsFile->getTokens();
-        $conditions = $tokens[$functionPtr]['conditions'];
-
-        if ($conditions === []) {
-            return false;
-        }
-
-        end($conditions);
-
-        return in_array(current($conditions), self::OO_SCOPES, true);
+        return Scopes::isOOMethod($phpcsFile, $functionPtr);
     }
 
     /**
