@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-25
+
 ### Requirements
 
 - PHP_CodeSniffer 4 is supported. The minimum PHP_CodeSniffer version is now 3.13.6 (was 3.7), and `phpcsstandards/phpcsutils` (^1.2) is a new dependency (#20)
@@ -19,7 +21,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - Sniff reference: `CLIStandards/Docs/<Category>/<Sniff>Standard.xml` for every sniff (requirement, rationale, valid/invalid code, error codes, properties), usable with `phpcs --generator=Markdown|Text|HTML`, and the generated `docs/sniffs.md` linked from the README (#22)
 - `composer docs` regenerates `docs/sniffs.md`; `composer test:docs` (run in CI) fails when a sniff has no doc or the file is stale (#22)
-- Safe autofixes for `phpcbf`: `ConfirmPassthrough` passes the assoc args to `WP_CLI::confirm()`, and `OutputMethod` turns `echo`/`print` statements that end with a newline into `WP_CLI::line()` (#22)
+- Safe autofixes for `phpcbf`: `ConfirmPassthrough` passes the assoc args to `WP_CLI::confirm()`, and `OutputMethod` turns `echo`/`print` statements that end with a newline into `WP_CLI::line()` without that newline (`echo $x . "\n";` becomes `WP_CLI::line( $x );`) (#22, #21)
 - Fixture runner can check `phpcbf` output against a `.fixed` file; Autofix fixtures (#22)
 - PHPUnit sniff tests (`composer test:unit`): every sniff runs over every shared fixture and is compared per line, on PHP_CodeSniffer 3 and 4; `composer test:update` regenerates the expectations (#21)
 - DocumentedFlags fixtures (#17)
@@ -27,7 +29,6 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Changed
 
 - Fixtures renamed to unique names (`safety-fail.php`, ...); `scripts/verify-fixtures.php` now only runs end-to-end ruleset checks (#21)
-- `OutputMethod` autofix drops a concatenated `"\n"` entirely: `echo $x . "\n";` becomes `WP_CLI::line( $x );` instead of `WP_CLI::line( $x . "" );` (#21)
 
 ### Fixed
 
@@ -112,6 +113,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Real-world scans on 10 local WP-CLI plugin repositories
 - Equivalence between `CLIStandardsMust` and `CLIStandards --warning-severity=0`
 
-[Unreleased]: https://github.com/yeremi/cli-standards/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/yeremi/cli-standards/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/yeremi/cli-standards/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yeremi/cli-standards/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yeremi/cli-standards/releases/tag/v1.0.0
