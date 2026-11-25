@@ -77,6 +77,9 @@
     <rule ref="CLIStandards.Documentation.SinceAnnotation">
         <type>warning</type>
     </rule>
+    <rule ref="CLIStandards.Documentation.DocumentedFlags">
+        <type>warning</type>
+    </rule>
 
     <!-- Default exclusions -->
     <exclude-pattern>*/vendor/*</exclude-pattern>

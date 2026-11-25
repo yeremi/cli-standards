@@ -100,6 +100,7 @@ Warning-level sniffs:
 - `ProgressBar`
 - `BatchSizeFlag`
 - `SinceAnnotation`
+- `DocumentedFlags` (new in 1.2.0; not part of `CLIStandardsMust`)
 
 The implementation is intentionally heuristic in some areas. It favors practical signal over deep semantic analysis, so some checks can still produce false negatives or advisory-only warnings.
 
@@ -120,6 +121,13 @@ Sniffs that check command methods (documentation, safety, output format, batch s
 Documentation can come from the command's docblock or from the arguments of `WP_CLI::add_command()` in the same file: a `synopsis` satisfies `## OPTIONS`, and a `longdesc` containing an `## EXAMPLES` heading satisfies `## EXAMPLES`. For a closure, the docblock is the one placed right before the `WP_CLI::add_command()` statement.
 
 `## OPTIONS` is only required when the command reads its positional or associative arguments (directly or in a same-class helper it calls): a command without arguments has no options to document. Every command still needs a docblock with `## EXAMPLES`.
+
+`DocumentedFlags` compares the flags a command reads with its synopsis, taken from where WP-CLI reads it: the `synopsis` argument of `WP_CLI::add_command()` (array or string), else the docblock's `## OPTIONS` section, else an `## OPTIONS` heading in `longdesc`.
+
+- **UndocumentedFlag**: a flag read in the handler through `$assoc_args['name']`, `get_flag_value( $assoc_args, 'name' )` or `array_key_exists( 'name', $assoc_args )`, but missing from the synopsis. `WP_CLI::confirm( $message, $assoc_args )` reads `--yes`. WP-CLI rejects undocumented flags as unknown once a synopsis exists. Global parameters (`--url`, `--path`, `--user`, ...) and a generic `[--<field>=<value>]` entry are accepted.
+- **UnusedFlag**: a documented flag the handler never reads. It is skipped when the handler passes its assoc args on (to a helper, a formatter, `wp_parse_args()`, ...), since those reads cannot be followed.
+
+Flag names are case-sensitive. Commands without a readable synopsis (none, or one built at runtime) are skipped; `DocblockOptions` covers a missing `## OPTIONS`.
 
 Sniffs that depend on what a command does (`ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`) classify it by the name users type: the `@subcommand` annotation, else the name passed to `WP_CLI::add_command()` in the same file, else the method or function name. Keywords must be whole words of that name (`dropdown_stats` is not a "drop" command). `ConfirmOnDelete` and `DryRunSupport` also treat a command as destructive when it calls a content-destroying API such as `wp_delete_post()`, `$wpdb->delete()` or a `$wpdb->query()` with `DELETE`/`TRUNCATE`/`DROP`.
 

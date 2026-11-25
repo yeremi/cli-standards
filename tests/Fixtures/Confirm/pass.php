@@ -27,7 +27,9 @@ class Confirm_Pass_Command {
         if ( ! array_key_exists( 'yes', $assoc_args ) ) {
             WP_CLI::confirm( 'Delete all logs?' );
         }
-        acme_delete_logs();
+        if ( ! WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false ) ) {
+            acme_delete_logs();
+        }
         WP_CLI::success( 'Done.' );
     }
 
@@ -52,7 +54,9 @@ class Confirm_Pass_Command {
         // ✅ Explicit --yes guard without braces, through get_flag_value().
         if ( ! WP_CLI\Utils\get_flag_value( $assoc_args, 'yes', false ) )
             WP_CLI::confirm( 'Delete all backups?' );
-        acme_delete_backups();
+        if ( ! WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false ) ) {
+            acme_delete_backups();
+        }
         WP_CLI::success( 'Done.' );
     }
 
@@ -76,7 +80,9 @@ class Confirm_Pass_Command {
     public function purge_queue( $args, $assoc_args ) {
         // ✅ Standard form: $assoc_args passed through.
         WP_CLI::confirm( 'Purge the queue?', $assoc_args );
-        acme_purge_queue();
+        if ( ! WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false ) ) {
+            acme_purge_queue();
+        }
         WP_CLI::success( 'Done.' );
     }
 }

@@ -40,7 +40,7 @@ class Docs_Pass_Command {
         WP_CLI::add_command(
             'myplugin ping',
             function ( $args, $assoc_args ) {
-                WP_CLI::success( 'pong' );
+                WP_CLI::success( WP_CLI\Utils\get_flag_value( $assoc_args, 'loud', false ) ? 'PONG' : 'pong' );
             },
             [
                 'shortdesc' => 'Check that the plugin responds.',
@@ -69,7 +69,8 @@ class Docs_Pass_Command {
     #[ReturnTypeWillChange]
     public function version( $args, $assoc_args ) {
         // ✅ Docblock is found even with an attribute in between.
-        WP_CLI::line( $this->format_version( '1.0.0' ) );
+        $short = WP_CLI\Utils\get_flag_value( $assoc_args, 'short', false );
+        WP_CLI::line( $short ? '1.0.0' : $this->format_version( '1.0.0' ) );
     }
 
     /**

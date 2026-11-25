@@ -13,5 +13,6 @@
         <exclude name="CLIStandards.Scalability.ProgressBar"/>
         <exclude name="CLIStandards.Scalability.BatchSizeFlag"/>
         <exclude name="CLIStandards.Documentation.SinceAnnotation"/>
+        <exclude name="CLIStandards.Documentation.DocumentedFlags"/>
     </rule>
 </ruleset>

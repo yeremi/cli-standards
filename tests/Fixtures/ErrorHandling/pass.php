@@ -24,6 +24,9 @@ class Error_Handling_Pass_Command {
      * [--dry-run]
      * : Preview only.
      *
+     * [--yes]
+     * : Skip the confirmation prompt.
+     *
      * ## EXAMPLES
      *
      *     wp acme sample --title=Hello
@@ -33,6 +36,11 @@ class Error_Handling_Pass_Command {
     public function sample( $args, $assoc_args ) {
         // The command deletes content, so it confirms first (see ConfirmOnDelete).
         WP_CLI::confirm( 'Run the sample import?', $assoc_args );
+
+        if ( WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false ) ) {
+            WP_CLI::success( 'Dry run: nothing changed.' );
+            return;
+        }
 
         // ✅ WP_Post|false|null: never WP_Error.
         $deleted = wp_delete_post( 10, true );
@@ -53,7 +61,8 @@ class Error_Handling_Pass_Command {
         }
 
         // ✅ $wp_error not passed: returns 0 on failure.
-        $id = wp_insert_post( [ 'post_title' => 'x' ] );
+        $title = WP_CLI\Utils\get_flag_value( $assoc_args, 'title', 'x' );
+        $id    = wp_insert_post( [ 'post_title' => $title ] );
         if ( ! $id ) {
             WP_CLI::warning( 'Insert failed.' );
         }
