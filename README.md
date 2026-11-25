@@ -268,10 +268,13 @@ Install dependencies:
 composer install
 ```
 
-Run the fixture-based regression suite:
+Run the tests:
 
 ```bash
-composer test
+composer test            # unit tests + ruleset checks
+composer test:unit       # each sniff over every fixture, per line (PHPUnit)
+composer test:fixtures   # full rulesets, custom rulesets and phpcbf end to end
+composer test:docs       # sniff docs complete, docs/sniffs.md up to date
 ```
 
 For contribution workflow and expectations, see `CONTRIBUTING.md`.
@@ -281,8 +284,11 @@ For contribution workflow and expectations, see `CONTRIBUTING.md`.
 - `CLIStandards/`: the main standard and sniff classes
 - `CLIStandards/Helpers/`: shared base class for command-aware sniffs (command detection, docblock lookup)
 - `CLIStandardsMust/`: blocking-only variant for staged adoption
-- `tests/Fixtures/`: regression fixtures for expected violations and clean cases
-- `scripts/verify-fixtures.php`: assertion-based test runner used by CI
+- `CLIStandards/Docs/`: reference doc per sniff (source of `docs/sniffs.md`)
+- `CLIStandards/Tests/`: PHPUnit test per sniff, with the expected reports per fixture and line
+- `tests/Fixtures/`: shared fixtures (`*-fail.php`, `*-pass.php`), `.fixed` files with the expected `phpcbf` result, and `.xml` rulesets for property cases
+- `scripts/verify-fixtures.php`: end-to-end checks of the full rulesets
+- `scripts/update-test-expectations.php`: regenerates the unit test expectations (`composer test:update`)
 
 ## License
 
