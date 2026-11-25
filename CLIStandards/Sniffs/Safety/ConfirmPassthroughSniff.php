@@ -16,10 +16,10 @@
 
 namespace CLIStandards\Sniffs\Safety;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class ConfirmPassthroughSniff implements Sniff
+class ConfirmPassthroughSniff extends AbstractCommandSniff
 {
     /**
      * Returns the token types that this sniff is interested in.
@@ -80,8 +80,9 @@ class ConfirmPassthroughSniff implements Sniff
             }
         }
 
-        // WP_CLI::confirm( message, $assoc_args ) requires 2 args (1 comma).
-        if ($commaCount === 0) {
+        // WP_CLI::confirm( message, $assoc_args ) requires 2 args (1 comma),
+        // unless the call is guarded by an explicit --yes check.
+        if ($commaCount === 0 && !$this->isGuardedByYesFlag($phpcsFile, $stackPtr)) {
             $phpcsFile->addError(
                 'WP_CLI::confirm() must receive $assoc_args as the second argument to enable --yes bypass in automation. Use: WP_CLI::confirm( $message, $assoc_args )',
                 $stackPtr,
@@ -115,5 +116,71 @@ class ConfirmPassthroughSniff implements Sniff
         }
 
         return true;
+    }
+
+    /**
+     * Whether a confirm() call only runs when --yes was not passed.
+     *
+     * Accepts an enclosing `if`/`elseif` (with or without braces) whose
+     * condition mentions the 'yes' flag together with the assoc args, e.g.
+     * `if ( ! isset( $assoc_args['yes'] ) )` or
+     * `if ( ! get_flag_value( $assoc_args, 'yes' ) )`.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the "confirm" token.
+     *
+     * @return bool
+     */
+    private function isGuardedByYesFlag(File $phpcsFile, int $stackPtr): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $owners = [];
+
+        // if/elseif with braces: they are conditions of the call.
+        foreach ($tokens[$stackPtr]['conditions'] as $ptr => $code) {
+            if ($code === T_IF || $code === T_ELSEIF) {
+                $owners[] = $ptr;
+            }
+        }
+
+        // if/elseif without braces: PHPCS reports the `if` itself as the start
+        // of the statement, or the statement follows the closing parenthesis.
+        $start = $phpcsFile->findStartOfStatement($stackPtr);
+        if (in_array($tokens[$start]['code'], [T_IF, T_ELSEIF], true)
+            && isset($tokens[$start]['parenthesis_closer'])
+            && $tokens[$start]['parenthesis_closer'] < $stackPtr
+        ) {
+            $owners[] = $start;
+        }
+
+        $prev = $phpcsFile->findPrevious(T_WHITESPACE, ($start - 1), null, true);
+        if ($prev !== false && $tokens[$prev]['code'] === T_CLOSE_PARENTHESIS
+            && isset($tokens[$prev]['parenthesis_owner'])
+            && in_array($tokens[$tokens[$prev]['parenthesis_owner']]['code'], [T_IF, T_ELSEIF], true)
+        ) {
+            $owners[] = $tokens[$prev]['parenthesis_owner'];
+        }
+
+        foreach ($owners as $owner) {
+            if (!isset($tokens[$owner]['parenthesis_opener'], $tokens[$owner]['parenthesis_closer'])) {
+                continue;
+            }
+
+            $hasYes       = false;
+            $hasAssocArgs = false;
+            for ($i = $tokens[$owner]['parenthesis_opener']; $i < $tokens[$owner]['parenthesis_closer']; $i++) {
+                if ($tokens[$i]['code'] === T_CONSTANT_ENCAPSED_STRING && trim($tokens[$i]['content'], "\"'") === 'yes') {
+                    $hasYes = true;
+                } elseif ($tokens[$i]['code'] === T_VARIABLE && $this->isAssocArgsVariable($phpcsFile, $i)) {
+                    $hasAssocArgs = true;
+                }
+            }
+
+            if ($hasYes && $hasAssocArgs) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
