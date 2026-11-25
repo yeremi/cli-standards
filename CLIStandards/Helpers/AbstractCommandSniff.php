@@ -184,6 +184,14 @@ abstract class AbstractCommandSniff implements Sniff
             return false;
         }
 
+        // A registrar can also delegate add_command() to a same-class helper.
+        if (!$usage['registration']
+            && $this->getAssocArgsName($phpcsFile, $functionPtr) === null
+            && $this->registersThroughHelpers($phpcsFile, $functionPtr)
+        ) {
+            return false;
+        }
+
         if ($usage['direct'] || $usage['nested']) {
             return true;
         }
@@ -191,6 +199,26 @@ abstract class AbstractCommandSniff implements Sniff
         $assocArgs = $this->getAssocArgsName($phpcsFile, $functionPtr);
 
         return $assocArgs !== null && in_array($assocArgs, self::ASSOC_ARGS_NAMES, true);
+    }
+
+    /**
+     * Whether a same-class method the function calls (up to two levels)
+     * registers commands with WP_CLI::add_command() or add_hook().
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION token.
+     *
+     * @return bool
+     */
+    private function registersThroughHelpers(File $phpcsFile, int $functionPtr): bool
+    {
+        foreach ($this->getReachableBodies($phpcsFile, $functionPtr) as $index => [$start, $end]) {
+            if ($index > 0 && $this->scanCliUsage($phpcsFile, $start, $end)['registration']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
