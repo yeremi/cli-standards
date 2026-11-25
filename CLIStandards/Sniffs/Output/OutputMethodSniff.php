@@ -4,7 +4,9 @@
  *
  * @package CLIStandards
  *
- * Detects usage of `echo` and `print` in WP-CLI command files.
+ * Detects usage of `echo` and `print` in WP-CLI command code: command
+ * handlers and the same-class methods they call. Web code in the same file
+ * (admin notices, settings screens) is not reported.
  *
  * WP-CLI commands must use WP_CLI::log(), WP_CLI::success(), WP_CLI::error(),
  * or WP_CLI::line() instead of raw output functions.
@@ -17,10 +19,10 @@
 
 namespace CLIStandards\Sniffs\Output;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class OutputMethodSniff implements Sniff
+class OutputMethodSniff extends AbstractCommandSniff
 {
     /**
      * Per-file CLI context cache.
@@ -28,6 +30,13 @@ class OutputMethodSniff implements Sniff
      * @var array<string, bool>
      */
     private $cliContextCache = [];
+
+    /**
+     * Token ranges of command code per file, keyed by file and token count.
+     *
+     * @var array<string, array<int, array{0: int, 1: int}>>
+     */
+    private $commandRangeCache = [];
 
     /**
      * Returns the token types that this sniff is interested in.
@@ -62,6 +71,13 @@ class OutputMethodSniff implements Sniff
             if (!$this->cliContextCache[$filename]) {
                 return $phpcsFile->numTokens;
             }
+        }
+
+        // Only output produced while a command runs: inside a command handler
+        // or a same-class method it calls. Admin screens, notices and other
+        // web code in the same file are not CLI output.
+        if (!$this->isInCommandCode($phpcsFile, $stackPtr)) {
+            return;
         }
 
         $tokens = $phpcsFile->getTokens();
@@ -104,6 +120,46 @@ class OutputMethodSniff implements Sniff
             // Check for :: following WP_CLI.
             $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
             if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a token is inside a command handler or a same-class method
+     * reachable from one (see AbstractCommandSniff::getReachableBodies()).
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the token.
+     *
+     * @return bool
+     */
+    private function isInCommandCode(File $phpcsFile, int $stackPtr): bool
+    {
+        $key = $phpcsFile->getFilename() . ':' . $phpcsFile->numTokens;
+
+        if (!isset($this->commandRangeCache[$key])) {
+            $tokens = $phpcsFile->getTokens();
+            $ranges = [];
+
+            for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
+                $code = $tokens[$i]['code'];
+                if (($code === T_FUNCTION || $code === T_CLOSURE || $code === T_FN)
+                    && $this->isCommandHandler($phpcsFile, $i)
+                ) {
+                    foreach ($this->getReachableBodies($phpcsFile, $i) as $range) {
+                        $ranges[] = $range;
+                    }
+                }
+            }
+
+            $this->commandRangeCache = [$key => $ranges];
+        }
+
+        foreach ($this->commandRangeCache[$key] as [$start, $end]) {
+            if ($stackPtr > $start && $stackPtr < $end) {
                 return true;
             }
         }
