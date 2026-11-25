@@ -126,6 +126,19 @@ Public methods of a registered command class are subcommands in WP-CLI, so `run(
 </rule>
 ```
 
+`ProgressBar` skips loops over array literals and constants, and loops whose only WP-CLI calls are messages (`error`, `warning`, `line`), unless they walk data from an unbounded source. The list of sources (`get_posts`, `get_users`, `get_results`, `WP_Query`, …) can be replaced:
+
+```xml
+<rule ref="CLIStandards.Scalability.ProgressBar">
+    <properties>
+        <property name="unboundedSources" type="array">
+            <element value="get_posts"/>
+            <element value="my_plugin_get_records"/>
+        </property>
+    </properties>
+</rule>
+```
+
 ## Add To `phpcs.xml.dist`
 
 ```xml

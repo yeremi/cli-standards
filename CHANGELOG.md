@@ -11,10 +11,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - `ignoreMethods` ruleset property on every command-aware sniff to exclude public lifecycle methods by name (#2)
 - Documentation fixtures, including pass cases (#2)
 - Arguments fixtures (#3)
+- `unboundedSources` ruleset property on `ProgressBar` (#4)
+- Scalability fixtures, including pass cases (#4)
 
 ### Changed
 
 - Command detection is shared by all command-aware sniffs (`DocblockOptions`, `DocblockExamples`, `SinceAnnotation`, `ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`). Only public, non-magic methods (plus `__invoke`) that do more than register commands are checked, which removes false positives on constructors, registration bootstraps and private helpers (#2)
+- `ProgressBar` skips loops over array literals and constants, and message-only loops (`error`/`warning`/`line`) unless they iterate an unbounded source such as `get_posts()` (#4)
 - Fixture suite asserts message counts per sniff source, not only totals (#1)
 
 ### Fixed
