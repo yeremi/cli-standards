@@ -6,6 +6,18 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### May add reports
+
+Detection fixes in this release can report violations in code that passed with 1.0.0:
+
+- Methods recognized as commands by their `$assoc_args` parameter or by the `WP_CLI\…` namespaced API, without any `WP_CLI::` call, are now checked by `ConfirmOnDelete`, `DryRunSupport`, `FormatSupport` and `BatchSizeFlag` (#2)
+- Handlers using `$assocArgs` or another name for the second parameter are now checked by `FlagNaming`, `FlagExtraction` and the Documentation sniffs (#3)
+- `ProgressBar` no longer counts a progress bar created in a neighboring method (#5)
+- A docblock placed before a PHP 8 attribute is now read: its `MissingDocblock` error becomes `MissingOptionsSection`, `MissingExamplesSection` or `MissingSince` when those parts are missing (#6)
+- `## OPTIONS`, `## EXAMPLES` and `## AVAILABLE FIELDS` only count as headings on their own line, not when mentioned in prose (#13)
+
+Reports are removed for constructors, registration bootstraps, private/protected helpers (#2), and loops over fixed collections or message-only loops (#4).
+
 ### Added
 
 - `ignoreMethods` ruleset property on every command-aware sniff to exclude public lifecycle methods by name (#2)
