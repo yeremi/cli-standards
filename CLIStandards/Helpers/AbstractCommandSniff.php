@@ -31,6 +31,7 @@ use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 use PHPCSUtils\BackCompat\BCTokens;
 use PHPCSUtils\Utils\PassedParameters;
+use PHPCSUtils\Utils\TextStrings;
 
 abstract class AbstractCommandSniff implements Sniff
 {
@@ -767,6 +768,10 @@ abstract class AbstractCommandSniff implements Sniff
      * Concatenated text of the string literals in a token range, with "\n"
      * escapes of double-quoted strings turned into newlines.
      *
+     * Multi-line literals and heredoc/nowdoc bodies are read whole
+     * (PHPCSUtils TextStrings); other tokens, such as concatenation
+     * operators, are skipped.
+     *
      * @param File $phpcsFile The file being scanned.
      * @param int  $start     First token.
      * @param int  $end       Last token.
@@ -777,32 +782,17 @@ abstract class AbstractCommandSniff implements Sniff
     {
         $tokens = $phpcsFile->getTokens();
         $text   = '';
-        $quoted = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING];
+        $starts = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING, T_START_HEREDOC, T_START_NOWDOC];
 
         for ($i = $start; $i <= $end; $i++) {
-            $code = $tokens[$i]['code'];
-
-            if ($code === T_HEREDOC || $code === T_NOWDOC) {
-                $text .= $tokens[$i]['content'];
+            if (!in_array($tokens[$i]['code'], $starts, true)) {
                 continue;
             }
 
-            if (!in_array($code, $quoted, true)) {
-                continue;
-            }
-
-            // A multi-line string literal is split into one token per line:
-            // join the run before removing the quotes.
-            $raw = '';
-            while ($i <= $end && $tokens[$i]['code'] === $code) {
-                $raw .= $tokens[$i]['content'];
-                $i++;
-            }
-            $i--;
-
-            $quote = $raw[0];
-            $body  = substr($raw, 1, -1);
-            $text .= ($quote === '"') ? str_replace('\\n', "\n", $body) : $body;
+            $body    = TextStrings::getCompleteTextString($phpcsFile, $i);
+            $doubled = $tokens[$i]['content'][0] === '"';
+            $text   .= $doubled ? str_replace('\\n', "\n", $body) : $body;
+            $i       = TextStrings::getEndOfCompleteTextString($phpcsFile, $i);
         }
 
         return $text;
@@ -937,7 +927,7 @@ abstract class AbstractCommandSniff implements Sniff
             return null;
         }
 
-        return substr($tokens[$range[0]]['content'], 1, -1);
+        return TextStrings::stripQuotes($tokens[$range[0]]['content']);
     }
 
     /**

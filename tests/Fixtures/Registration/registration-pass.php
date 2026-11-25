@@ -102,3 +102,22 @@ class Acme_Registration_Command {
         WP_CLI::log( "Stats for {$days} days ready." );
     }
 }
+
+// ✅ longdesc given as a heredoc: its ## EXAMPLES heading counts.
+WP_CLI::add_command(
+    'acme greet',
+    'acme_greet',
+    [
+        'shortdesc' => 'Greet the user.',
+        'longdesc'  => <<<'DOC'
+## EXAMPLES
+
+    wp acme greet
+DOC
+        ,
+    ]
+);
+
+function acme_greet( $args, $assoc_args ) {
+    WP_CLI::log( 'Hello.' );
+}
