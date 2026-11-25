@@ -112,9 +112,19 @@ $cases = [
             'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 2,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Scalability/fail.php',
+        'errors' => 0,
+        'warnings' => 3,
+        'sources' => [
+            'CLIStandards.Scalability.ProgressBar.MissingProgressBar' => 3,
+        ],
+    ],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Safety/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Documentation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Scalability/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
@@ -141,6 +151,7 @@ $cases = [
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
         ],
     ],
+    ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/Scalability/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Safety/fail.php',

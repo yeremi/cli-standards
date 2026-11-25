@@ -10,6 +10,11 @@
  * For commands that iterate over collections (foreach with WP_CLI calls),
  * progress bars provide essential feedback on long-running operations.
  *
+ * Loops that cannot be long-running are skipped:
+ * - foreach over an array literal or a constant (fixed, small collections)
+ * - loops whose only WP_CLI calls are messages (error/warning/line), unless
+ *   they iterate data from an unbounded source such as get_posts()
+ *
  * Rule:    Bulk loops with WP-CLI calls should display a progress bar
  * Level:   SHOULD — violation reported as warning
  * Fix:     Use $progress = WP_CLI\Utils\make_progress_bar('Processing', $total) before loop
@@ -18,11 +23,50 @@
 
 namespace CLIStandards\Sniffs\Scalability;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class ProgressBarSniff implements Sniff
+class ProgressBarSniff extends AbstractCommandSniff
 {
+    /**
+     * Functions and methods whose results can grow without bound.
+     *
+     * Configurable from a ruleset (type="array").
+     *
+     * @var array<string>
+     */
+    public $unboundedSources = [
+        'get_posts',
+        'get_pages',
+        'get_users',
+        'get_terms',
+        'get_comments',
+        'get_sites',
+        'get_results',
+        'get_col',
+        'wc_get_orders',
+        'wc_get_products',
+        'WP_Query',
+        'WP_User_Query',
+        'WP_Term_Query',
+        'WP_Comment_Query',
+    ];
+
+    /**
+     * WP_CLI methods that only print messages; a loop that only calls these
+     * is reporting, not processing.
+     *
+     * @var array<string>
+     */
+    private const MESSAGING_METHODS = ['error', 'warning', 'line'];
+
+    /**
+     * Tokens that may form a constant reference: FOO, self::FOO, Foo\Bar::BAZ.
+     *
+     * @var array<int|string>
+     */
+    private const CONSTANT_TOKENS = [T_STRING, T_SELF, T_STATIC, T_PARENT, T_DOUBLE_COLON, T_NS_SEPARATOR];
+
     /**
      * Returns the token types that this sniff is interested in.
      *
@@ -53,23 +97,24 @@ class ProgressBarSniff implements Sniff
         $loopEnd   = $tokens[$stackPtr]['scope_closer'];
 
         // Only care about loops that contain WP_CLI calls (i.e., CLI command context).
-        if (!$this->hasWpCliCall($phpcsFile, $loopStart, $loopEnd)) {
+        $cliMethods = $this->getWpCliMethods($phpcsFile, $loopStart, $loopEnd);
+        if ($cliMethods === []) {
             return;
         }
 
-        // Check if make_progress_bar() is called before or inside the loop.
-        // Look backward up to 30 tokens for the progress bar creation.
-        $searchStart = max(0, $stackPtr - 50);
-        $hasProgressBar = false;
-
-        for ($i = $searchStart; $i < $loopEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'make_progress_bar') {
-                $hasProgressBar = true;
-                break;
-            }
+        // Fixed collections (literals, constants) cannot be long-running.
+        if ($this->iteratesFixedCollection($phpcsFile, $stackPtr)) {
+            return;
         }
 
-        if (!$hasProgressBar) {
+        // A loop that only reports messages is not bulk processing, unless the
+        // data it walks comes from a source that can grow without bound.
+        $onlyMessages = array_diff($cliMethods, self::MESSAGING_METHODS) === [];
+        if ($onlyMessages && !$this->iteratesUnboundedSource($phpcsFile, $stackPtr)) {
+            return;
+        }
+
+        if (!$this->hasProgressBar($phpcsFile, $stackPtr, $loopEnd)) {
             $phpcsFile->addWarning(
                 'Bulk loop contains WP-CLI calls but does not use WP_CLI\Utils\make_progress_bar() for user feedback. Progress indicators are essential for long-running CLI operations.',
                 $stackPtr,
@@ -79,21 +124,203 @@ class ProgressBarSniff implements Sniff
     }
 
     /**
-     * Check if a scope contains WP_CLI:: method calls.
+     * Whether make_progress_bar() is called before or inside the loop.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the loop token.
+     * @param int  $loopEnd   Position of the loop's closing brace.
+     *
+     * @return bool
      */
-    private function hasWpCliCall(File $phpcsFile, int $start, int $end): bool
+    private function hasProgressBar(File $phpcsFile, int $stackPtr, int $loopEnd): bool
     {
         $tokens = $phpcsFile->getTokens();
 
-        for ($i = $start; $i < $end; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'WP_CLI') {
-                $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
-                if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
-                    return true;
-                }
+        // Look backward up to 30 tokens for the progress bar creation.
+        $searchStart = max(0, $stackPtr - 50);
+
+        for ($i = $searchStart; $i < $loopEnd; $i++) {
+            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'make_progress_bar') {
+                return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Names of the WP_CLI:: methods called in a scope (lowercase, unique).
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $start     Start of the scope.
+     * @param int  $end       End of the scope.
+     *
+     * @return array<string>
+     */
+    private function getWpCliMethods(File $phpcsFile, int $start, int $end): array
+    {
+        $tokens  = $phpcsFile->getTokens();
+        $methods = [];
+
+        for ($i = $start; $i < $end; $i++) {
+            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+                continue;
+            }
+
+            $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
+            if ($next === false || $tokens[$next]['code'] !== T_DOUBLE_COLON) {
+                continue;
+            }
+
+            $method = $phpcsFile->findNext(T_WHITESPACE, ($next + 1), null, true);
+            if ($method !== false && $tokens[$method]['code'] === T_STRING) {
+                $methods[strtolower($tokens[$method]['content'])] = true;
+            }
+        }
+
+        return array_keys($methods);
+    }
+
+    /**
+     * Whether a foreach iterates an array literal or a constant.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the loop token.
+     *
+     * @return bool
+     */
+    private function iteratesFixedCollection(File $phpcsFile, int $stackPtr): bool
+    {
+        $expression = $this->getForeachSubject($phpcsFile, $stackPtr);
+        if ($expression === []) {
+            return false;
+        }
+
+        $tokens = $phpcsFile->getTokens();
+        $first  = $tokens[$expression[0]]['code'];
+
+        if ($first === T_OPEN_SHORT_ARRAY || $first === T_ARRAY) {
+            return true;
+        }
+
+        foreach ($expression as $ptr) {
+            if (!in_array($tokens[$ptr]['code'], self::CONSTANT_TOKENS, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether a loop iterates data from an unbounded source.
+     *
+     * Looks at the loop's parenthesized header and, for `foreach ( $var as …)`,
+     * at the latest assignment to $var in the same function before the loop.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the loop token.
+     *
+     * @return bool
+     */
+    private function iteratesUnboundedSource(File $phpcsFile, int $stackPtr): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        if (!isset($tokens[$stackPtr]['parenthesis_opener'], $tokens[$stackPtr]['parenthesis_closer'])) {
+            return false;
+        }
+
+        $opener = $tokens[$stackPtr]['parenthesis_opener'];
+        $closer = $tokens[$stackPtr]['parenthesis_closer'];
+
+        if ($this->containsUnboundedSource($phpcsFile, $opener, $closer)) {
+            return true;
+        }
+
+        $expression = $this->getForeachSubject($phpcsFile, $stackPtr);
+        if (count($expression) !== 1 || $tokens[$expression[0]]['code'] !== T_VARIABLE) {
+            return false;
+        }
+
+        $variable = $tokens[$expression[0]]['content'];
+        $callable = $this->findEnclosingCallable($phpcsFile, $stackPtr);
+        $limit    = ($callable !== null && isset($tokens[$callable]['scope_opener']))
+            ? $tokens[$callable]['scope_opener']
+            : 0;
+
+        for ($i = ($stackPtr - 1); $i > $limit; $i--) {
+            if ($tokens[$i]['code'] !== T_VARIABLE || $tokens[$i]['content'] !== $variable) {
+                continue;
+            }
+
+            $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
+            if ($next === false || $tokens[$next]['code'] !== T_EQUAL) {
+                continue;
+            }
+
+            $end = $phpcsFile->findEndOfStatement($next);
+
+            return $this->containsUnboundedSource($phpcsFile, $next, $end);
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a token range calls one of the unbounded sources.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $start     First token.
+     * @param int  $end       Last token.
+     *
+     * @return bool
+     */
+    private function containsUnboundedSource(File $phpcsFile, int $start, int $end): bool
+    {
+        $tokens  = $phpcsFile->getTokens();
+        $sources = array_map('strtolower', (array) $this->unboundedSources);
+
+        for ($i = $start; $i <= $end; $i++) {
+            if ($tokens[$i]['code'] === T_STRING && in_array(strtolower($tokens[$i]['content']), $sources, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Non-whitespace tokens of the iterated expression of a foreach.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the loop token.
+     *
+     * @return array<int> Token positions; empty when not a foreach.
+     */
+    private function getForeachSubject(File $phpcsFile, int $stackPtr): array
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        if ($tokens[$stackPtr]['code'] !== T_FOREACH
+            || !isset($tokens[$stackPtr]['parenthesis_opener'], $tokens[$stackPtr]['parenthesis_closer'])
+        ) {
+            return [];
+        }
+
+        $opener = $tokens[$stackPtr]['parenthesis_opener'];
+        $as     = $phpcsFile->findNext(T_AS, ($opener + 1), $tokens[$stackPtr]['parenthesis_closer']);
+        if ($as === false) {
+            return [];
+        }
+
+        $expression = [];
+        for ($i = ($opener + 1); $i < $as; $i++) {
+            if ($tokens[$i]['code'] !== T_WHITESPACE && $tokens[$i]['code'] !== T_COMMENT) {
+                $expression[] = $i;
+            }
+        }
+
+        return $expression;
     }
 }
