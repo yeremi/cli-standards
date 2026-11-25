@@ -198,7 +198,18 @@ class OutputMethodSniff extends AbstractCommandSniff
             && substr($content, -4, 1) !== '\\'
             && ($tokens[$last]['code'] === T_DOUBLE_QUOTED_STRING || $content[0] === '"')
         ) {
-            return ['last' => $last, 'remove' => [], 'replace' => substr($content, 0, -3) . '"'];
+            $replacement = substr($content, 0, -3) . '"';
+
+            // `$x . "\n"`: drop the concatenation instead of leaving `$x . ""`.
+            $dot = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($last - 1), $stackPtr, true);
+            if ($replacement === '""' && $dot !== false && $tokens[$dot]['code'] === T_STRING_CONCAT) {
+                $before = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($dot - 1), $stackPtr, true);
+                if ($before !== false && $before !== $stackPtr) {
+                    return ['last' => $before, 'remove' => range($before + 1, $last), 'replace' => null];
+                }
+            }
+
+            return ['last' => $last, 'remove' => [], 'replace' => $replacement];
         }
 
         return null;
