@@ -4,7 +4,7 @@
  *
  * @package CLIStandards
  *
- * Detects non-kebab-case flag names in $assoc_args array access.
+ * Detects non-kebab-case flag names in $assoc_args (or $assocArgs) array access.
  *
  * WP-CLI convention requires kebab-case for all flags: --my-flag, not
  * --my_flag or --myFlag. This sniff checks array key access on $assoc_args
@@ -18,10 +18,10 @@
 
 namespace CLIStandards\Sniffs\Arguments;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class FlagNamingSniff implements Sniff
+class FlagNamingSniff extends AbstractCommandSniff
 {
     /**
      * Kebab-case validation pattern.
@@ -80,14 +80,15 @@ class FlagNamingSniff implements Sniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        // Only interested in $assoc_args.
-        if ($tokens[$stackPtr]['content'] !== '$assoc_args') {
-            return;
-        }
-
         // Look for array access: $assoc_args['key'].
         $next = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
         if ($next === false || $tokens[$next]['code'] !== T_OPEN_SQUARE_BRACKET) {
+            return;
+        }
+
+        // Only the WP-CLI assoc args: $assoc_args, $assocArgs, or the second
+        // parameter of the enclosing command handler whatever its name.
+        if (!$this->isAssocArgsVariable($phpcsFile, $stackPtr)) {
             return;
         }
 

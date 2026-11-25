@@ -85,11 +85,11 @@ $cases = [
     [
         'standard' => 'CLIStandards',
         'fixture' => 'tests/Fixtures/Documentation/fail.php',
-        'errors' => 4,
+        'errors' => 5,
         'warnings' => 1,
         'sources' => [
             'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 3,
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
             'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 1,
         ],
     ],
@@ -100,6 +100,16 @@ $cases = [
         'warnings' => 0,
         'sources' => [
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
+        ],
+    ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Arguments/fail.php',
+        'errors' => 2,
+        'warnings' => 2,
+        'sources' => [
+            'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 2,
+            'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 2,
         ],
     ],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
@@ -124,11 +134,11 @@ $cases = [
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Documentation/fail.php',
-        'errors' => 4,
+        'errors' => 5,
         'warnings' => 0,
         'sources' => [
             'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 3,
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
         ],
     ],
     [

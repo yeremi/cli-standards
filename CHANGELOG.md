@@ -10,11 +10,16 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - `ignoreMethods` ruleset property on every command-aware sniff to exclude public lifecycle methods by name (#2)
 - Documentation fixtures, including pass cases (#2)
+- Arguments fixtures (#3)
 
 ### Changed
 
 - Command detection is shared by all command-aware sniffs (`DocblockOptions`, `DocblockExamples`, `SinceAnnotation`, `ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`). Only public, non-magic methods (plus `__invoke`) that do more than register commands are checked, which removes false positives on constructors, registration bootstraps and private helpers (#2)
 - Fixture suite asserts message counts per sniff source, not only totals (#1)
+
+### Fixed
+
+- `$assocArgs` (camelCase) and other names for the second handler parameter are recognized as WP-CLI assoc args by the Documentation, `FlagNaming` and `FlagExtraction` sniffs (#3)
 
 ## [1.0.0] - 2026-04-23
 

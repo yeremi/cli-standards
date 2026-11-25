@@ -46,7 +46,7 @@ abstract class AbstractCommandSniff implements Sniff
      *
      * @var array<string>
      */
-    protected const ASSOC_ARGS_NAMES = ['$assoc_args'];
+    protected const ASSOC_ARGS_NAMES = ['$assoc_args', '$assocArgs'];
 
     /**
      * WP_CLI static methods that only register commands or hooks.
@@ -151,6 +151,35 @@ abstract class AbstractCommandSniff implements Sniff
     }
 
     /**
+     * Determine whether a T_VARIABLE token refers to the WP-CLI assoc args.
+     *
+     * True for the conventional names, and for the second parameter of the
+     * enclosing command handler whatever its name.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $variablePtr Position of the T_VARIABLE token.
+     *
+     * @return bool
+     */
+    protected function isAssocArgsVariable(File $phpcsFile, int $variablePtr): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $name   = $tokens[$variablePtr]['content'];
+
+        if (in_array($name, self::ASSOC_ARGS_NAMES, true)) {
+            return true;
+        }
+
+        $functionPtr = $this->findEnclosingCallable($phpcsFile, $variablePtr);
+        if ($functionPtr === null || $tokens[$functionPtr]['code'] !== T_FUNCTION) {
+            return false;
+        }
+
+        return $this->getAssocArgsName($phpcsFile, $functionPtr) === $name
+            && $this->isCommandHandler($phpcsFile, $functionPtr);
+    }
+
+    /**
      * Find the docblock preceding a function declaration.
      *
      * Skips modifiers placed between the docblock and the function keyword.
@@ -202,6 +231,37 @@ abstract class AbstractCommandSniff implements Sniff
         }
 
         return $content;
+    }
+
+    /**
+     * Find the innermost function, closure or arrow function around a token.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the token.
+     *
+     * @return int|null Position of the T_FUNCTION/T_CLOSURE/T_FN token.
+     */
+    protected function findEnclosingCallable(File $phpcsFile, int $stackPtr): ?int
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        // Arrow functions are not part of "conditions"; check them first.
+        $fn = $phpcsFile->findPrevious(T_FN, $stackPtr);
+        while ($fn !== false) {
+            if (isset($tokens[$fn]['scope_closer']) && $tokens[$fn]['scope_closer'] >= $stackPtr) {
+                return $fn;
+            }
+            $fn = $phpcsFile->findPrevious(T_FN, ($fn - 1));
+        }
+
+        $conditions = array_reverse($tokens[$stackPtr]['conditions'], true);
+        foreach ($conditions as $ptr => $code) {
+            if ($code === T_FUNCTION || $code === T_CLOSURE) {
+                return $ptr;
+            }
+        }
+
+        return null;
     }
 
     /**

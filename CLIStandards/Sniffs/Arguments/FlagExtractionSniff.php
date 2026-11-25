@@ -18,10 +18,10 @@
 
 namespace CLIStandards\Sniffs\Arguments;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class FlagExtractionSniff implements Sniff
+class FlagExtractionSniff extends AbstractCommandSniff
 {
     /**
      * Per-file CLI context cache.
@@ -69,13 +69,15 @@ class FlagExtractionSniff implements Sniff
 
         $tokens = $phpcsFile->getTokens();
 
-        if ($tokens[$stackPtr]['content'] !== '$assoc_args') {
-            return;
-        }
-
         // Look for direct array access: $assoc_args['key'].
         $next = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
         if ($next === false || $tokens[$next]['code'] !== T_OPEN_SQUARE_BRACKET) {
+            return;
+        }
+
+        // Only the WP-CLI assoc args: $assoc_args, $assocArgs, or the second
+        // parameter of the enclosing command handler whatever its name.
+        if (!$this->isAssocArgsVariable($phpcsFile, $stackPtr)) {
             return;
         }
 
@@ -89,10 +91,10 @@ class FlagExtractionSniff implements Sniff
         // a common default-value pattern. Still flag, but the suggestion is
         // more about consistency than correctness.
         $phpcsFile->addWarning(
-            'Consider using WP_CLI\Utils\get_flag_value( $assoc_args, \'%s\', $default ) instead of direct array access. get_flag_value() provides consistent default handling and --no-<flag> negation support.',
+            'Consider using WP_CLI\Utils\get_flag_value( %s, \'%s\', $default ) instead of direct array access. get_flag_value() provides consistent default handling and --no-<flag> negation support.',
             $stackPtr,
             'DirectAccess',
-            [trim($tokens[$keyToken]['content'], "\"'")]
+            [$tokens[$stackPtr]['content'], trim($tokens[$keyToken]['content'], "\"'")]
         );
     }
 
