@@ -123,6 +123,26 @@ $cases = [
             'CLIStandards.Scalability.ProgressBar.MissingProgressBar' => 3,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Classification/fail.php',
+        'errors' => 4,
+        'warnings' => 4,
+        'sources' => [
+            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 4,
+            'CLIStandards.Safety.DryRunSupport.MissingDryRun' => 4,
+        ],
+    ],
+    [
+        'standard' => 'tests/Fixtures/Classification/custom-destructive.xml',
+        'fixture' => 'tests/Fixtures/Classification/custom-destructive.php',
+        'errors' => 1,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 1,
+        ],
+    ],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classification/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Safety/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Documentation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
@@ -152,6 +172,15 @@ $cases = [
             'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
             'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 1,
+        ],
+    ],
+    [
+        'standard' => 'CLIStandardsMust',
+        'fixture' => 'tests/Fixtures/Classification/fail.php',
+        'errors' => 4,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 4,
         ],
     ],
     ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/Scalability/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],

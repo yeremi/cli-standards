@@ -42,6 +42,42 @@ abstract class AbstractCommandSniff implements Sniff
     public $ignoreMethods = [];
 
     /**
+     * Calls that destroy content, used as a behavior signal by the safety
+     * sniffs (case-insensitive).
+     *
+     * Plain names are functions (wp_delete_post). Names starting with "->"
+     * are $wpdb methods (->delete). "->query" only counts when its arguments
+     * contain a DELETE, TRUNCATE or DROP statement in a string literal.
+     * Configurable from a ruleset (type="array").
+     *
+     * Option, meta and transient deletions are not included by default: they
+     * are routinely used for housekeeping (locks, caches) inside commands that
+     * are not destructive.
+     *
+     * @var array<string>|string
+     */
+    public $destructiveFunctions = [
+        'wp_delete_post',
+        'wp_delete_attachment',
+        'wp_delete_user',
+        'wpmu_delete_user',
+        'wp_delete_term',
+        'wp_delete_comment',
+        'wp_delete_nav_menu',
+        'wp_delete_site',
+        'wpmu_delete_blog',
+        '->delete',
+        '->query',
+    ];
+
+    /**
+     * Cache for getRegisteredCommandNames(), keyed by file and token count.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private $registeredCommandCache = [];
+
+    /**
      * Conventional names of the WP-CLI associative arguments parameter.
      *
      * @var array<string>
@@ -264,6 +300,382 @@ abstract class AbstractCommandSniff implements Sniff
         $pattern = '/^[ \t]*(?:\/\*\*)?[ \t]*\*?[ \t]*##[ \t]+' . $name . '[ \t]*\r?$/mi';
 
         return preg_match($pattern, $docContent) === 1;
+    }
+
+    /**
+     * Find which keyword, if any, names the command a function implements.
+     *
+     * The command name is the one users type: the @subcommand annotation,
+     * else the name given to WP_CLI::add_command() in the same file, else the
+     * function name. It is split into whole words (snake_case, camelCase,
+     * kebab-case) and each word is compared with the keywords, so
+     * "dropdown_stats" does not match "drop".
+     *
+     * @param File          $phpcsFile   The file being scanned.
+     * @param int           $functionPtr Position of the T_FUNCTION token.
+     * @param array<string> $keywords    Lowercase keywords.
+     *
+     * @return string|null The matched keyword, or null.
+     */
+    protected function matchCommandKeyword(File $phpcsFile, int $functionPtr, array $keywords): ?string
+    {
+        $words = $this->splitWords($this->getCommandName($phpcsFile, $functionPtr));
+
+        foreach ($keywords as $keyword) {
+            if (in_array($keyword, $words, true)) {
+                return $keyword;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The name users type for the command a function implements.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION token.
+     *
+     * @return string
+     */
+    protected function getCommandName(File $phpcsFile, int $functionPtr): string
+    {
+        $subcommand = $this->getSubcommandAnnotation($phpcsFile, $functionPtr);
+        if ($subcommand !== null) {
+            return $subcommand;
+        }
+
+        $declared   = (string) $phpcsFile->getDeclarationName($functionPtr);
+        $registered = $this->getRegisteredCommandNames($phpcsFile);
+
+        return $registered[strtolower($declared)] ?? $declared;
+    }
+
+    /**
+     * Split an identifier or command name into lowercase words.
+     *
+     * @param string $name e.g. "dropdown_stats", "bulkDelete", "cache-flush".
+     *
+     * @return array<string>
+     */
+    protected function splitWords(string $name): array
+    {
+        $name  = (string) preg_replace('/([a-z0-9])([A-Z])/', '$1 $2', $name);
+        $words = preg_split('/[^A-Za-z0-9]+/', strtolower($name));
+
+        return array_values(array_filter((array) $words, 'strlen'));
+    }
+
+    /**
+     * Find the first destructive call in a token range.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $start     First token of the range.
+     * @param int  $end       Last token of the range.
+     *
+     * @return string|null A label such as "wp_delete_post()" or "$wpdb->query(DELETE)".
+     */
+    protected function findDestructiveCall(File $phpcsFile, int $start, int $end): ?string
+    {
+        $tokens    = $phpcsFile->getTokens();
+        $functions = [];
+        $methods   = [];
+
+        foreach ($this->normalizeList($this->destructiveFunctions) as $name) {
+            if (strpos($name, '->') === 0) {
+                $methods[] = substr($name, 2);
+            } else {
+                $functions[] = $name;
+            }
+        }
+
+        for ($i = $start; $i <= $end; $i++) {
+            if ($tokens[$i]['code'] !== T_STRING) {
+                continue;
+            }
+
+            $open = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
+            if ($open === false || $tokens[$open]['code'] !== T_OPEN_PARENTHESIS) {
+                continue;
+            }
+
+            $name = strtolower($tokens[$i]['content']);
+            $prev = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
+            $isMethodCall = $prev !== false
+                && ($tokens[$prev]['code'] === T_OBJECT_OPERATOR || $tokens[$prev]['code'] === T_NULLSAFE_OBJECT_OPERATOR);
+
+            if (!$isMethodCall) {
+                $isDeclarationOrStatic = $prev !== false
+                    && in_array($tokens[$prev]['code'], [T_FUNCTION, T_DOUBLE_COLON, T_NEW], true);
+                if (!$isDeclarationOrStatic && in_array($name, $functions, true)) {
+                    return $tokens[$i]['content'] . '()';
+                }
+                continue;
+            }
+
+            if (!in_array($name, $methods, true) || !$this->isWpdbObject($phpcsFile, $prev)) {
+                continue;
+            }
+
+            if ($name !== 'query') {
+                return '$wpdb->' . $tokens[$i]['content'] . '()';
+            }
+
+            $statement = $this->findDestructiveSql($phpcsFile, $open);
+            if ($statement !== null) {
+                return '$wpdb->query(' . $statement . ')';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize a list property that may come from a ruleset as a string.
+     *
+     * @param array<string>|string $list The configured value.
+     *
+     * @return array<string> Lowercase, trimmed, non-empty values.
+     */
+    protected function normalizeList($list): array
+    {
+        if (is_string($list)) {
+            $list = explode(',', $list);
+        }
+
+        return array_values(array_filter(array_map(
+            static function ($value): string {
+                return strtolower(trim((string) $value));
+            },
+            (array) $list
+        )));
+    }
+
+    /**
+     * Read the @subcommand annotation of a function's docblock.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION token.
+     *
+     * @return string|null
+     */
+    private function getSubcommandAnnotation(File $phpcsFile, int $functionPtr): ?string
+    {
+        $docblock = $this->findDocblock($phpcsFile, $functionPtr);
+        if ($docblock === false) {
+            return null;
+        }
+
+        $tokens = $phpcsFile->getTokens();
+        $closer = $tokens[$docblock]['comment_closer'];
+
+        for ($i = $docblock; $i < $closer; $i++) {
+            if ($tokens[$i]['code'] !== T_DOC_COMMENT_TAG || strtolower($tokens[$i]['content']) !== '@subcommand') {
+                continue;
+            }
+
+            $value = $phpcsFile->findNext(T_DOC_COMMENT_WHITESPACE, ($i + 1), $closer, true);
+            if ($value !== false && $tokens[$value]['code'] === T_DOC_COMMENT_STRING) {
+                $parts = preg_split('/\s+/', trim($tokens[$value]['content']));
+
+                return $parts[0] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Map callables registered with WP_CLI::add_command() in this file to
+     * the last word of their command name.
+     *
+     * Handles literal callables only: 'my_function', 'Class::method',
+     * [ $object, 'method' ] and array( Class::class, 'method' ).
+     *
+     * @param File $phpcsFile The file being scanned.
+     *
+     * @return array<string, string> Lowercase function/method name => command word.
+     */
+    protected function getRegisteredCommandNames(File $phpcsFile): array
+    {
+        $key = $phpcsFile->getFilename() . ':' . $phpcsFile->numTokens;
+        if (isset($this->registeredCommandCache[$key])) {
+            return $this->registeredCommandCache[$key];
+        }
+
+        $tokens = $phpcsFile->getTokens();
+        $map    = [];
+
+        for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
+            if ($tokens[$i]['code'] !== T_STRING || strtolower($tokens[$i]['content']) !== 'add_command') {
+                continue;
+            }
+
+            $colon = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
+            $class = ($colon !== false) ? $phpcsFile->findPrevious(T_WHITESPACE, ($colon - 1), null, true) : false;
+            $open  = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
+
+            if ($class === false || $tokens[$colon]['code'] !== T_DOUBLE_COLON
+                || $tokens[$class]['content'] !== 'WP_CLI'
+                || $open === false || !isset($tokens[$open]['parenthesis_closer'])
+            ) {
+                continue;
+            }
+
+            $arguments = $this->splitArguments($phpcsFile, $open);
+            if (count($arguments) < 2) {
+                continue;
+            }
+
+            $command = $this->literalString($phpcsFile, $arguments[0]);
+            $handler = $this->callableMethodName($phpcsFile, $arguments[1]);
+            if ($command === null || $handler === null) {
+                continue;
+            }
+
+            $commandWords = preg_split('/\s+/', trim($command));
+            $map[strtolower($handler)] = (string) end($commandWords);
+        }
+
+        $this->registeredCommandCache = [$key => $map];
+
+        return $map;
+    }
+
+    /**
+     * Whether the token before "->" is the $wpdb object ($wpdb or ->wpdb).
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $operator  Position of the object operator.
+     *
+     * @return bool
+     */
+    private function isWpdbObject(File $phpcsFile, int $operator): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $object = $phpcsFile->findPrevious(T_WHITESPACE, ($operator - 1), null, true);
+
+        if ($object === false) {
+            return false;
+        }
+
+        return ($tokens[$object]['code'] === T_VARIABLE && $tokens[$object]['content'] === '$wpdb')
+            || ($tokens[$object]['code'] === T_STRING && $tokens[$object]['content'] === 'wpdb');
+    }
+
+    /**
+     * Find a destructive SQL keyword in the string literals of a call.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $open      Position of the call's opening parenthesis.
+     *
+     * @return string|null DELETE, TRUNCATE or DROP.
+     */
+    private function findDestructiveSql(File $phpcsFile, int $open): ?string
+    {
+        $tokens = $phpcsFile->getTokens();
+        $close  = $tokens[$open]['parenthesis_closer'];
+        $string = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING, T_HEREDOC, T_NOWDOC];
+
+        for ($i = ($open + 1); $i < $close; $i++) {
+            if (in_array($tokens[$i]['code'], $string, true)
+                && preg_match('/^\W*(DELETE|TRUNCATE|DROP)\b/i', trim($tokens[$i]['content'], "\"' \t\n\r"), $match)
+            ) {
+                return strtoupper($match[1]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Split the arguments of a call into token ranges.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $open      Position of the call's opening parenthesis.
+     *
+     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each argument.
+     */
+    private function splitArguments(File $phpcsFile, int $open): array
+    {
+        $tokens    = $phpcsFile->getTokens();
+        $close     = $tokens[$open]['parenthesis_closer'];
+        $arguments = [];
+        $start     = $open + 1;
+
+        for ($i = $start; $i <= $close; $i++) {
+            if ($i < $close && isset($tokens[$i]['parenthesis_closer']) && $tokens[$i]['code'] === T_OPEN_PARENTHESIS) {
+                $i = $tokens[$i]['parenthesis_closer'];
+                continue;
+            }
+
+            if ($i < $close && isset($tokens[$i]['bracket_closer'])
+                && in_array($tokens[$i]['code'], [T_OPEN_SHORT_ARRAY, T_OPEN_SQUARE_BRACKET, T_OPEN_CURLY_BRACKET], true)
+            ) {
+                $i = $tokens[$i]['bracket_closer'];
+                continue;
+            }
+
+            if ($i === $close || $tokens[$i]['code'] === T_COMMA) {
+                $first = $phpcsFile->findNext(T_WHITESPACE, $start, $i, true);
+                $last  = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), ($start - 1), true);
+                if ($first !== false && $last !== false) {
+                    $arguments[] = [$first, $last];
+                }
+                $start = $i + 1;
+            }
+        }
+
+        return $arguments;
+    }
+
+    /**
+     * Value of an argument that is a single string literal.
+     *
+     * @param File               $phpcsFile The file being scanned.
+     * @param array{0: int, 1: int} $range  Argument token range.
+     *
+     * @return string|null
+     */
+    private function literalString(File $phpcsFile, array $range): ?string
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        if ($range[0] !== $range[1] || $tokens[$range[0]]['code'] !== T_CONSTANT_ENCAPSED_STRING) {
+            return null;
+        }
+
+        return substr($tokens[$range[0]]['content'], 1, -1);
+    }
+
+    /**
+     * Function or method name of a literal callable argument.
+     *
+     * @param File               $phpcsFile The file being scanned.
+     * @param array{0: int, 1: int} $range  Argument token range.
+     *
+     * @return string|null
+     */
+    private function callableMethodName(File $phpcsFile, array $range): ?string
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        $string = $this->literalString($phpcsFile, $range);
+        if ($string !== null) {
+            $parts = explode('::', $string);
+
+            return (string) end($parts);
+        }
+
+        $first = $tokens[$range[0]]['code'];
+        if ($first !== T_OPEN_SHORT_ARRAY && $first !== T_ARRAY) {
+            return null;
+        }
+
+        // [ $object, 'method' ] / array( Class::class, 'method' ): last string literal.
+        $last = $phpcsFile->findPrevious(T_CONSTANT_ENCAPSED_STRING, $range[1], $range[0]);
+
+        return ($last !== false) ? substr($tokens[$last]['content'], 1, -1) : null;
     }
 
     /**

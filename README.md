@@ -116,6 +116,8 @@ Sniffs that check command methods (documentation, safety, output format, batch s
 - it does more than register commands (a method whose only WP-CLI calls are `WP_CLI::add_command()` / `add_hook()` is a bootstrap);
 - it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes the assoc args as its second parameter (`$assoc_args` or `$assocArgs`).
 
+Sniffs that depend on what a command does (`ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`) classify it by the name users type: the `@subcommand` annotation, else the name passed to `WP_CLI::add_command()` in the same file, else the method or function name. Keywords must be whole words of that name (`dropdown_stats` is not a "drop" command). `ConfirmOnDelete` and `DryRunSupport` also treat a command as destructive when it calls a content-destroying API such as `wp_delete_post()`, `$wpdb->delete()` or a `$wpdb->query()` with `DELETE`/`TRUNCATE`/`DROP`.
+
 Flag sniffs recognize the assoc args as `$assoc_args`, `$assocArgs`, or the second parameter of a command handler whatever its name.
 
 ## Configuration
@@ -127,6 +129,21 @@ Public methods of a registered command class are subcommands in WP-CLI, so `run(
     <properties>
         <property name="ignoreMethods" type="array">
             <element value="services"/>
+        </property>
+    </properties>
+</rule>
+```
+
+The destructive API list used by `ConfirmOnDelete` and `DryRunSupport` can be replaced. Option, meta and transient deletions are not in the default list, because commands use them for housekeeping (locks, caches). Plain names are functions, and names starting with `->` are `$wpdb` methods:
+
+```xml
+<rule ref="CLIStandards.Safety.ConfirmOnDelete">
+    <properties>
+        <property name="destructiveFunctions" type="array">
+            <element value="wp_delete_post"/>
+            <element value="->delete"/>
+            <element value="->query"/>
+            <element value="my_plugin_purge_records"/>
         </property>
     </properties>
 </rule>

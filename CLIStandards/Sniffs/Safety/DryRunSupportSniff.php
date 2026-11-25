@@ -6,9 +6,11 @@
  *
  * Detects state-changing WP-CLI commands that don't support --dry-run.
  *
- * Commands that modify data (create, update, delete, migrate, sync, import,
- * flush, reset) should support --dry-run to preview changes without
- * executing them. Only 20% of plugins implement this, but 100% of
+ * Commands that modify data should support --dry-run to preview changes
+ * without executing them. A command is state-changing when a whole word of
+ * its command name is a state-changing keyword (create, update, delete,
+ * migrate, sync, import, flush, reset, ...), or when its body calls a
+ * content-destroying API (see ConfirmOnDelete). Only 20% of plugins implement this, but 100% of
  * top-tier plugins in the study do.
  *
  * Rule:    State-changing commands should support --dry-run to preview without executing
@@ -75,30 +77,23 @@ class DryRunSupportSniff extends AbstractCommandSniff
             return;
         }
 
-        $functionName = strtolower($tokens[$nameToken]['content']);
-
-        // Check if this is a state-changing command.
-        $isStateChanging = false;
-        foreach ($this->stateChangingKeywords as $keyword) {
-            if (strpos($functionName, $keyword) !== false) {
-                $isStateChanging = true;
-                break;
-            }
-        }
-
-        if (!$isStateChanging) {
-            return;
-        }
-
         if (!isset($tokens[$stackPtr]['scope_opener'], $tokens[$stackPtr]['scope_closer'])) {
             return;
         }
 
-        // Verify it's a CLI command handler.
         $scopeStart = $tokens[$stackPtr]['scope_opener'];
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
+        // Verify it's a CLI command handler.
         if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
+            return;
+        }
+
+        // State-changing by name (whole words of the command name), or
+        // destructive by behavior.
+        if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->stateChangingKeywords) === null
+            && $this->findDestructiveCall($phpcsFile, $scopeStart, $scopeEnd) === null
+        ) {
             return;
         }
 

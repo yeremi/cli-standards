@@ -65,19 +65,8 @@ class AvailableFieldsSniff extends AbstractCommandSniff
             return;
         }
 
-        $functionName = strtolower($tokens[$nameToken]['content']);
-
-        $isListing = false;
-        foreach ($this->listingKeywords as $keyword) {
-            if ($functionName === $keyword || strpos($functionName, $keyword . '_') === 0
-                || strpos($functionName, '_' . $keyword) !== false
-            ) {
-                $isListing = true;
-                break;
-            }
-        }
-
-        if (!$isListing) {
+        // Listing command: a listing keyword is a whole word of the command name.
+        if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->listingKeywords) === null) {
             return;
         }
 

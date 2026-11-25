@@ -7,9 +7,14 @@
  * Detects WP-CLI command methods with destructive semantics that do not
  * call WP_CLI::confirm() anywhere in their body.
  *
- * Destructive operations are identified by function names containing keywords
- * such as: delete, remove, flush, truncate, reset, purge, destroy, drop,
- * clear, wipe, uninstall, deactivate.
+ * A command is destructive when either:
+ * - a whole word of its command name (@subcommand, the name registered with
+ *   WP_CLI::add_command() in the same file, or the method name) is a
+ *   destructive keyword: delete, remove, flush, truncate, reset, purge,
+ *   destroy, drop, clear, wipe, uninstall, erase ("dropdown" is not "drop");
+ * - its body calls a content-destroying API (destructiveFunctions property):
+ *   wp_delete_post(), wp_delete_user(), $wpdb->delete(), a $wpdb->query()
+ *   with DELETE/TRUNCATE/DROP, ...
  *
  * This is the #1 ecosystem gap identified in the study: 40% of plugins
  * execute destructive operations with zero safety guardrails.
@@ -75,29 +80,11 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
             return;
         }
 
-        $functionName = strtolower($tokens[$nameToken]['content']);
-
-        // Check if the function name contains any destructive keyword.
-        $isDestructive = false;
-        $matchedKeyword = '';
-        foreach ($this->destructiveKeywords as $keyword) {
-            if (strpos($functionName, $keyword) !== false) {
-                $isDestructive = true;
-                $matchedKeyword = $keyword;
-                break;
-            }
-        }
-
-        if (!$isDestructive) {
-            return;
-        }
-
         // Ensure this function has a body to scan.
         if (!isset($tokens[$stackPtr]['scope_opener'], $tokens[$stackPtr]['scope_closer'])) {
             return;
         }
 
-        // Verify this is a WP-CLI command handler (contains WP_CLI calls).
         $scopeStart = $tokens[$stackPtr]['scope_opener'];
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
@@ -105,13 +92,25 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
             return;
         }
 
+        // Destructive by name (whole words of the command name) or by behavior.
+        $keyword = $this->matchCommandKeyword($phpcsFile, $stackPtr, $this->destructiveKeywords);
+        if ($keyword !== null) {
+            $reason = sprintf('its name contains "%s"', $keyword);
+        } else {
+            $call = $this->findDestructiveCall($phpcsFile, $scopeStart, $scopeEnd);
+            if ($call === null) {
+                return;
+            }
+            $reason = sprintf('it calls %s', $call);
+        }
+
         // Search the function body for WP_CLI::confirm().
         if (!$this->hasConfirmCall($phpcsFile, $scopeStart, $scopeEnd)) {
             $phpcsFile->addError(
-                'Destructive command method "%s" (contains "%s") must call WP_CLI::confirm() before executing. This is the #1 safety gap in the WP-CLI ecosystem.',
+                'Destructive command "%s" must call WP_CLI::confirm() before executing, because %s. This is the #1 safety gap in the WP-CLI ecosystem.',
                 $nameToken,
                 'MissingConfirm',
-                [$tokens[$nameToken]['content'], $matchedKeyword]
+                [$tokens[$nameToken]['content'], $reason]
             );
         }
     }
