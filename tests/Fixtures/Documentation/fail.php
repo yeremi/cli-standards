@@ -44,7 +44,8 @@ class Docs_Fail_Command {
      */
     public function refresh( $args, $assoc_args ) {
         // ❌ G1 + G2: sections are only mentioned in prose, not used as headings.
-        WP_CLI::success( 'Refreshed.' );
+        $force = WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false );
+        WP_CLI::success( $force ? 'Refreshed (forced).' : 'Refreshed.' );
     }
 
     /**
@@ -67,6 +68,20 @@ class Docs_Fail_Command {
         // ⚠ C4: AVAILABLE FIELDS is only mentioned in prose.
         $format = WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
         WP_CLI\Utils\format_items( $format, [], [ 'id', 'name' ] );
+    }
+
+    /**
+     * Show one item.
+     *
+     * ## EXAMPLES
+     *
+     *     wp myplugin docs describe 42
+     *
+     * @since 1.0.0
+     */
+    public function describe( $args, $assoc_args ) {
+        // ❌ G1: reads a positional argument but documents no ## OPTIONS.
+        WP_CLI::line( acme_item_title( (int) $args[0] ) );
     }
 
     // ❌ G1: a method that registers AND runs WP-CLI code is still a command.

@@ -958,6 +958,44 @@ abstract class AbstractCommandSniff implements Sniff
     }
 
     /**
+     * Whether a command reads its positional or associative arguments.
+     *
+     * Looks for the handler's first parameter ($args) and the assoc args
+     * (see isAssocArgsVariable()) in the command body and in the same-class
+     * methods it calls. A handler without parameters reads nothing.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
+     *
+     * @return bool
+     */
+    protected function readsArguments(File $phpcsFile, int $functionPtr): bool
+    {
+        $tokens     = $phpcsFile->getTokens();
+        $parameters = $phpcsFile->getMethodParameters($functionPtr);
+        $positional = $parameters[0]['name'] ?? null;
+
+        foreach ($this->getReachableBodies($phpcsFile, $functionPtr) as $index => [$start, $end]) {
+            for ($i = ($start + 1); $i < $end; $i++) {
+                if ($tokens[$i]['code'] !== T_VARIABLE) {
+                    continue;
+                }
+
+                // $args only means the positional arguments in the command itself.
+                if ($index === 0 && $positional !== null && $tokens[$i]['content'] === $positional) {
+                    return true;
+                }
+
+                if ($this->isAssocArgsVariable($phpcsFile, $i)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Read a delegation declaration from the command's docblock.
      *
      *     @cli-standards confirm-delegated Purger::purge() calls WP_CLI::confirm()

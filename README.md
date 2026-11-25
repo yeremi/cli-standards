@@ -118,6 +118,8 @@ Sniffs that check command methods (documentation, safety, output format, batch s
 
 Documentation can come from the command's docblock or from the arguments of `WP_CLI::add_command()` in the same file: a `synopsis` satisfies `## OPTIONS`, and a `longdesc` containing an `## EXAMPLES` heading satisfies `## EXAMPLES`. For a closure, the docblock is the one placed right before the `WP_CLI::add_command()` statement.
 
+`## OPTIONS` is only required when the command reads its positional or associative arguments (directly or in a same-class helper it calls): a command without arguments has no options to document. Every command still needs a docblock with `## EXAMPLES`.
+
 Sniffs that depend on what a command does (`ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`) classify it by the name users type: the `@subcommand` annotation, else the name passed to `WP_CLI::add_command()` in the same file, else the method or function name. Keywords must be whole words of that name (`dropdown_stats` is not a "drop" command). `ConfirmOnDelete` and `DryRunSupport` also treat a command as destructive when it calls a content-destroying API such as `wp_delete_post()`, `$wpdb->delete()` or a `$wpdb->query()` with `DELETE`/`TRUNCATE`/`DROP`.
 
 Flag sniffs recognize the assoc args as `$assoc_args`, `$assocArgs`, or the second parameter of a command handler whatever its name.
