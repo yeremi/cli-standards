@@ -30,7 +30,8 @@ class DocblockOptionsSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -48,10 +49,22 @@ class DocblockOptionsSniff extends AbstractCommandSniff
             return;
         }
 
+        // WP_CLI::add_command( $name, $callable, [ 'synopsis' => ... ] ) documents
+        // the options without a docblock; so does an ## OPTIONS heading in 'longdesc'.
+        $registration = $this->findRegistration($phpcsFile, $stackPtr);
+        if ($registration !== null
+            && ($registration['synopsis'] || $this->docblockHasSection((string) $registration['longdesc'], 'OPTIONS'))
+        ) {
+            return;
+        }
+
+        $documentedByArgs = $registration !== null
+            && ($registration['shortdesc'] || $registration['longdesc'] !== null);
+
         // Look backward for a docblock.
         $docblock = $this->findDocblock($phpcsFile, $stackPtr);
 
-        if ($docblock === false) {
+        if ($docblock === false && !$documentedByArgs) {
             $phpcsFile->addError(
                 'WP-CLI command methods must have a docblock containing a "## OPTIONS" section.',
                 $stackPtr,
@@ -61,11 +74,11 @@ class DocblockOptionsSniff extends AbstractCommandSniff
         }
 
         // Check if the docblock contains an ## OPTIONS heading.
-        $docContent = $this->getDocblockContent($phpcsFile, $docblock);
+        $docContent = ($docblock !== false) ? $this->getDocblockContent($phpcsFile, $docblock) : '';
 
         if (!$this->docblockHasSection($docContent, 'OPTIONS')) {
             $phpcsFile->addError(
-                'WP-CLI command docblock must contain a "## OPTIONS" section documenting all flags.',
+                'WP-CLI command docblock must contain a "## OPTIONS" section documenting all flags (or pass a "synopsis" to WP_CLI::add_command()).',
                 $stackPtr,
                 'MissingOptionsSection'
             );

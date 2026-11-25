@@ -111,10 +111,12 @@ The standard name is generic, but the current implementation is not framework-ag
 
 Sniffs that check command methods (documentation, safety, output format, batch size) follow WP-CLI's own rules for subcommands. A method is treated as a command handler when:
 
-- it is `public` (or a plain function outside a class);
+- it is `public` (or a plain function outside a class), or a closure / arrow function passed directly to `WP_CLI::add_command()`;
 - it is not a magic method, except `__invoke`;
 - it does more than register commands (a method whose only WP-CLI calls are `WP_CLI::add_command()` / `add_hook()` is a bootstrap);
 - it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes the assoc args as its second parameter (`$assoc_args` or `$assocArgs`).
+
+Documentation can come from the command's docblock or from the arguments of `WP_CLI::add_command()` in the same file: a `synopsis` satisfies `## OPTIONS`, and a `longdesc` containing an `## EXAMPLES` heading satisfies `## EXAMPLES`. For a closure, the docblock is the one placed right before the `WP_CLI::add_command()` statement.
 
 Sniffs that depend on what a command does (`ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`) classify it by the name users type: the `@subcommand` annotation, else the name passed to `WP_CLI::add_command()` in the same file, else the method or function name. Keywords must be whole words of that name (`dropdown_stats` is not a "drop" command). `ConfirmOnDelete` and `DryRunSupport` also treat a command as destructive when it calls a content-destroying API such as `wp_delete_post()`, `$wpdb->delete()` or a `$wpdb->query()` with `DELETE`/`TRUNCATE`/`DROP`.
 

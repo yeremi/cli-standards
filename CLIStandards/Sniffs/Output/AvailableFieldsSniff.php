@@ -45,7 +45,8 @@ class AvailableFieldsSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -60,10 +61,7 @@ class AvailableFieldsSniff extends AbstractCommandSniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
-        if ($nameToken === false || $tokens[$nameToken]['code'] !== T_STRING) {
-            return;
-        }
+        $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
 
         // Listing command: a listing keyword is a whole word of the command name.
         if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->listingKeywords) === null) {
@@ -97,7 +95,7 @@ class AvailableFieldsSniff extends AbstractCommandSniff
                 'Listing command "%s" uses format_items() but lacks a "## AVAILABLE FIELDS" section in its docblock. Document which fields are available and which are shown by default.',
                 $nameToken,
                 'MissingAvailableFields',
-                [$tokens[$nameToken]['content']]
+                [$this->getCommandLabel($phpcsFile, $stackPtr)]
             );
         }
     }

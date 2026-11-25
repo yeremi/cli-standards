@@ -30,7 +30,8 @@ class DocblockExamplesSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -48,19 +49,28 @@ class DocblockExamplesSniff extends AbstractCommandSniff
             return;
         }
 
+        // A 'longdesc' passed to WP_CLI::add_command() can hold the examples.
+        $registration = $this->findRegistration($phpcsFile, $stackPtr);
+        if ($registration !== null && $this->docblockHasSection((string) $registration['longdesc'], 'EXAMPLES')) {
+            return;
+        }
+
+        $documentedByArgs = $registration !== null
+            && ($registration['synopsis'] || $registration['shortdesc'] || $registration['longdesc'] !== null);
+
         $docblock = $this->findDocblock($phpcsFile, $stackPtr);
 
-        if ($docblock === false) {
+        if ($docblock === false && !$documentedByArgs) {
             // MissingDocblock is already reported by DocblockOptionsSniff.
             // Avoid duplicate noise — only flag the specific missing section.
             return;
         }
 
-        $docContent = $this->getDocblockContent($phpcsFile, $docblock);
+        $docContent = ($docblock !== false) ? $this->getDocblockContent($phpcsFile, $docblock) : '';
 
         if (!$this->docblockHasSection($docContent, 'EXAMPLES')) {
             $phpcsFile->addError(
-                'WP-CLI command docblock must contain a "## EXAMPLES" section with at least one realistic invocation.',
+                'WP-CLI command docblock must contain a "## EXAMPLES" section with at least one realistic invocation (or an "## EXAMPLES" heading in the "longdesc" passed to WP_CLI::add_command()).',
                 $stackPtr,
                 'MissingExamplesSection'
             );

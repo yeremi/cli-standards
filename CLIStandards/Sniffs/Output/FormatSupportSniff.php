@@ -47,7 +47,8 @@ class FormatSupportSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -62,10 +63,7 @@ class FormatSupportSniff extends AbstractCommandSniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
-        if ($nameToken === false || $tokens[$nameToken]['code'] !== T_STRING) {
-            return;
-        }
+        $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
 
         // Listing command: a listing keyword is a whole word of the command name.
         if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->listingKeywords) === null) {
@@ -99,7 +97,7 @@ class FormatSupportSniff extends AbstractCommandSniff
             $nameToken,
             'MissingFormatSupport',
             [
-                $tokens[$nameToken]['content'],
+                $this->getCommandLabel($phpcsFile, $stackPtr),
                 ($delegation === '') ? ' The "@cli-standards format-delegated" tag needs a reason.' : '',
             ]
         );

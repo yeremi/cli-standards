@@ -59,7 +59,8 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -74,11 +75,7 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        // Get the function name.
-        $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
-        if ($nameToken === false || $tokens[$nameToken]['code'] !== T_STRING) {
-            return;
-        }
+        $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
 
         // Ensure this function has a body to scan.
         if (!isset($tokens[$stackPtr]['scope_opener'], $tokens[$stackPtr]['scope_closer'])) {
@@ -122,7 +119,7 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
             $nameToken,
             'MissingConfirm',
             [
-                $tokens[$nameToken]['content'],
+                $this->getCommandLabel($phpcsFile, $stackPtr),
                 $reason,
                 ($delegation === '') ? ' The "@cli-standards confirm-delegated" tag needs a reason, e.g. which method confirms.' : '',
             ]

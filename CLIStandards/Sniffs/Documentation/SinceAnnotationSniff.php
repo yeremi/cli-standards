@@ -31,7 +31,8 @@ class SinceAnnotationSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -61,12 +62,12 @@ class SinceAnnotationSniff extends AbstractCommandSniff
         $docContent = $this->getDocblockContent($phpcsFile, $docblock);
 
         if (stripos($docContent, '@since') === false) {
-            $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
+            $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
             $phpcsFile->addWarning(
                 'WP-CLI command "%s" should have a @since annotation in its docblock for version tracking and deprecation management.',
                 $nameToken,
                 'MissingSince',
-                [$tokens[$nameToken]['content'] ?? 'unknown']
+                [$this->getCommandLabel($phpcsFile, $stackPtr)]
             );
         }
     }

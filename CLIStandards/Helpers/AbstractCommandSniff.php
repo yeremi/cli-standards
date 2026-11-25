@@ -71,11 +71,11 @@ abstract class AbstractCommandSniff implements Sniff
     ];
 
     /**
-     * Cache for getRegisteredCommandNames(), keyed by file and token count.
+     * Cache for getRegistrations(), keyed by file and token count.
      *
-     * @var array<string, array<string, string>>
+     * @var array<string, array>
      */
-    private $registeredCommandCache = [];
+    private $registrationCache = [];
 
     /**
      * Conventional names of the WP-CLI associative arguments parameter.
@@ -106,20 +106,30 @@ abstract class AbstractCommandSniff implements Sniff
     private const OO_SCOPES = [T_CLASS, T_TRAIT, T_ANON_CLASS, T_INTERFACE];
 
     /**
-     * Determine whether a T_FUNCTION token declares a WP-CLI command handler.
+     * Determine whether a function token declares a WP-CLI command handler.
+     *
+     * T_FUNCTION: see the class description. T_CLOSURE/T_FN: only when the
+     * closure is passed directly to WP_CLI::add_command().
      *
      * @param File $phpcsFile   The file being scanned.
-     * @param int  $functionPtr Position of the T_FUNCTION token.
+     * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
      *
      * @return bool
      */
     protected function isCommandHandler(File $phpcsFile, int $functionPtr): bool
     {
         $tokens = $phpcsFile->getTokens();
+        $code   = $tokens[$functionPtr]['code'];
 
-        if ($tokens[$functionPtr]['code'] !== T_FUNCTION
-            || !isset($tokens[$functionPtr]['scope_opener'], $tokens[$functionPtr]['scope_closer'])
-        ) {
+        if (!isset($tokens[$functionPtr]['scope_opener'], $tokens[$functionPtr]['scope_closer'])) {
+            return false;
+        }
+
+        if ($code === T_CLOSURE || $code === T_FN) {
+            return $this->findRegistration($phpcsFile, $functionPtr) !== null;
+        }
+
+        if ($code !== T_FUNCTION) {
             return false;
         }
 
@@ -207,7 +217,7 @@ abstract class AbstractCommandSniff implements Sniff
         }
 
         $functionPtr = $this->findEnclosingCallable($phpcsFile, $variablePtr);
-        if ($functionPtr === null || $tokens[$functionPtr]['code'] !== T_FUNCTION) {
+        if ($functionPtr === null) {
             return false;
         }
 
@@ -219,10 +229,11 @@ abstract class AbstractCommandSniff implements Sniff
      * Find the docblock preceding a function declaration.
      *
      * Skips modifiers and PHP 8 attributes placed between the docblock and
-     * the function keyword.
+     * the function keyword. For a closure registered with
+     * WP_CLI::add_command(), the docblock is the one before that statement.
      *
      * @param File $phpcsFile The file being scanned.
-     * @param int  $stackPtr  Position of the T_FUNCTION token.
+     * @param int  $stackPtr  Position of the T_FUNCTION/T_CLOSURE/T_FN token.
      *
      * @return int|false Position of the doc comment opener, or false.
      */
@@ -239,6 +250,16 @@ abstract class AbstractCommandSniff implements Sniff
             T_ABSTRACT,
             T_FINAL,
         ];
+
+        if ($tokens[$stackPtr]['code'] === T_CLOSURE || $tokens[$stackPtr]['code'] === T_FN) {
+            $registration = $this->findRegistration($phpcsFile, $stackPtr);
+            if ($registration === null) {
+                return false;
+            }
+
+            $stackPtr = $registration['statement'];
+            $skip[]   = T_NS_SEPARATOR;
+        }
 
         $prev = $phpcsFile->findPrevious($skip, ($stackPtr - 1), null, true);
 
@@ -345,10 +366,72 @@ abstract class AbstractCommandSniff implements Sniff
             return $subcommand;
         }
 
-        $declared   = (string) $phpcsFile->getDeclarationName($functionPtr);
-        $registered = $this->getRegisteredCommandNames($phpcsFile);
+        $registration = $this->findRegistration($phpcsFile, $functionPtr);
+        if ($registration !== null) {
+            return $registration['word'];
+        }
 
-        return $registered[strtolower($declared)] ?? $declared;
+        return (string) $this->getFunctionName($phpcsFile, $functionPtr);
+    }
+
+    /**
+     * Human-readable name of a command for messages.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
+     *
+     * @return string The function name, or the registered command for closures.
+     */
+    protected function getCommandLabel(File $phpcsFile, int $functionPtr): string
+    {
+        $name = $this->getFunctionName($phpcsFile, $functionPtr);
+        if ($name !== null) {
+            return $name;
+        }
+
+        $registration = $this->findRegistration($phpcsFile, $functionPtr);
+
+        return ($registration !== null) ? $registration['command'] : 'closure';
+    }
+
+    /**
+     * Token to attach a command report to: the function name, or the
+     * closure keyword.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
+     *
+     * @return int
+     */
+    protected function getReportPointer(File $phpcsFile, int $functionPtr): int
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        if ($tokens[$functionPtr]['code'] === T_FUNCTION) {
+            $name = $phpcsFile->findNext([T_WHITESPACE, T_BITWISE_AND], ($functionPtr + 1), null, true);
+            if ($name !== false && $tokens[$name]['code'] === T_STRING) {
+                return $name;
+            }
+        }
+
+        return $functionPtr;
+    }
+
+    /**
+     * Declared name of a named function, or null for closures.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the function token.
+     *
+     * @return string|null
+     */
+    protected function getFunctionName(File $phpcsFile, int $functionPtr): ?string
+    {
+        if ($phpcsFile->getTokens()[$functionPtr]['code'] !== T_FUNCTION) {
+            return null;
+        }
+
+        return $phpcsFile->getDeclarationName($functionPtr);
     }
 
     /**
@@ -486,25 +569,48 @@ abstract class AbstractCommandSniff implements Sniff
     }
 
     /**
-     * Map callables registered with WP_CLI::add_command() in this file to
-     * the last word of their command name.
+     * The WP_CLI::add_command() registration of a command handler, if it is
+     * in the same file.
      *
-     * Handles literal callables only: 'my_function', 'Class::method',
-     * [ $object, 'method' ] and array( Class::class, 'method' ).
+     * Named functions and methods match by name ('my_function',
+     * 'Class::method', [ $object, 'method' ], array( Class::class, 'method' )).
+     * Closures and arrow functions match when passed directly.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
+     *
+     * @return array{command: string, word: string, statement: int, synopsis: bool, shortdesc: bool, longdesc: string|null}|null
+     */
+    protected function findRegistration(File $phpcsFile, int $functionPtr): ?array
+    {
+        $registrations = $this->getRegistrations($phpcsFile);
+        $code          = $phpcsFile->getTokens()[$functionPtr]['code'];
+
+        if ($code === T_CLOSURE || $code === T_FN) {
+            return $registrations['closures'][$functionPtr] ?? null;
+        }
+
+        $name = $this->getFunctionName($phpcsFile, $functionPtr);
+
+        return ($name !== null) ? ($registrations['names'][strtolower($name)] ?? null) : null;
+    }
+
+    /**
+     * Parse every WP_CLI::add_command() call with a literal command name.
      *
      * @param File $phpcsFile The file being scanned.
      *
-     * @return array<string, string> Lowercase function/method name => command word.
+     * @return array{names: array<string, array>, closures: array<int, array>}
      */
-    protected function getRegisteredCommandNames(File $phpcsFile): array
+    private function getRegistrations(File $phpcsFile): array
     {
         $key = $phpcsFile->getFilename() . ':' . $phpcsFile->numTokens;
-        if (isset($this->registeredCommandCache[$key])) {
-            return $this->registeredCommandCache[$key];
+        if (isset($this->registrationCache[$key])) {
+            return $this->registrationCache[$key];
         }
 
         $tokens = $phpcsFile->getTokens();
-        $map    = [];
+        $result = ['names' => [], 'closures' => []];
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
             if ($tokens[$i]['code'] !== T_STRING || strtolower($tokens[$i]['content']) !== 'add_command') {
@@ -523,23 +629,131 @@ abstract class AbstractCommandSniff implements Sniff
             }
 
             $arguments = $this->splitArguments($phpcsFile, $open);
-            if (count($arguments) < 2) {
+            $command   = isset($arguments[0]) ? $this->literalString($phpcsFile, $arguments[0]) : null;
+            if ($command === null || !isset($arguments[1])) {
                 continue;
             }
 
-            $command = $this->literalString($phpcsFile, $arguments[0]);
-            $handler = $this->callableMethodName($phpcsFile, $arguments[1]);
-            if ($command === null || $handler === null) {
+            $words        = preg_split('/\s+/', trim($command));
+            $registration = [
+                'command'   => $command,
+                'word'      => (string) end($words),
+                'statement' => $class,
+                'synopsis'  => false,
+                'shortdesc' => false,
+                'longdesc'  => null,
+            ];
+
+            if (isset($arguments[2])) {
+                $registration = array_merge($registration, $this->parseRegistrationArgs($phpcsFile, $arguments[2]));
+            }
+
+            $handler = $arguments[1];
+            $first   = $handler[0];
+            if ($tokens[$first]['code'] === T_STATIC) {
+                $first = $phpcsFile->findNext(T_WHITESPACE, ($first + 1), null, true);
+            }
+
+            if ($first !== false && ($tokens[$first]['code'] === T_CLOSURE || $tokens[$first]['code'] === T_FN)) {
+                $result['closures'][$first] = $registration;
                 continue;
             }
 
-            $commandWords = preg_split('/\s+/', trim($command));
-            $map[strtolower($handler)] = (string) end($commandWords);
+            $name = $this->callableMethodName($phpcsFile, $handler);
+            if ($name !== null) {
+                $result['names'][strtolower($name)] = $registration;
+            }
         }
 
-        $this->registeredCommandCache = [$key => $map];
+        $this->registrationCache = [$key => $result];
 
-        return $map;
+        return $result;
+    }
+
+    /**
+     * Read shortdesc, longdesc and synopsis from add_command()'s $args array.
+     *
+     * @param File               $phpcsFile The file being scanned.
+     * @param array{0: int, 1: int} $range  Argument token range.
+     *
+     * @return array{synopsis?: bool, shortdesc?: bool, longdesc?: string}
+     */
+    private function parseRegistrationArgs(File $phpcsFile, array $range): array
+    {
+        $tokens = $phpcsFile->getTokens();
+        $first  = $range[0];
+
+        if ($tokens[$first]['code'] === T_OPEN_SHORT_ARRAY && isset($tokens[$first]['bracket_closer'])) {
+            $open  = $first;
+            $close = $tokens[$first]['bracket_closer'];
+        } elseif ($tokens[$first]['code'] === T_ARRAY && isset($tokens[$first]['parenthesis_opener'])) {
+            $open  = $tokens[$first]['parenthesis_opener'];
+            $close = $tokens[$open]['parenthesis_closer'];
+        } else {
+            return [];
+        }
+
+        $found = [];
+        foreach ($this->splitList($phpcsFile, $open, $close) as [$start, $end]) {
+            $arrow = $phpcsFile->findNext(T_DOUBLE_ARROW, $start, ($end + 1));
+            if ($tokens[$start]['code'] !== T_CONSTANT_ENCAPSED_STRING || $arrow === false) {
+                continue;
+            }
+
+            $key = strtolower(substr($tokens[$start]['content'], 1, -1));
+            if ($key === 'synopsis' || $key === 'shortdesc') {
+                $found[$key] = true;
+            } elseif ($key === 'longdesc') {
+                $found['longdesc'] = $this->stringLiteralText($phpcsFile, ($arrow + 1), $end);
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Concatenated text of the string literals in a token range, with "\n"
+     * escapes of double-quoted strings turned into newlines.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $start     First token.
+     * @param int  $end       Last token.
+     *
+     * @return string
+     */
+    private function stringLiteralText(File $phpcsFile, int $start, int $end): string
+    {
+        $tokens = $phpcsFile->getTokens();
+        $text   = '';
+        $quoted = [T_CONSTANT_ENCAPSED_STRING, T_DOUBLE_QUOTED_STRING];
+
+        for ($i = $start; $i <= $end; $i++) {
+            $code = $tokens[$i]['code'];
+
+            if ($code === T_HEREDOC || $code === T_NOWDOC) {
+                $text .= $tokens[$i]['content'];
+                continue;
+            }
+
+            if (!in_array($code, $quoted, true)) {
+                continue;
+            }
+
+            // A multi-line string literal is split into one token per line:
+            // join the run before removing the quotes.
+            $raw = '';
+            while ($i <= $end && $tokens[$i]['code'] === $code) {
+                $raw .= $tokens[$i]['content'];
+                $i++;
+            }
+            $i--;
+
+            $quote = $raw[0];
+            $body  = substr($raw, 1, -1);
+            $text .= ($quote === '"') ? str_replace('\\n', "\n", $body) : $body;
+        }
+
+        return $text;
     }
 
     /**
@@ -598,8 +812,21 @@ abstract class AbstractCommandSniff implements Sniff
      */
     private function splitArguments(File $phpcsFile, int $open): array
     {
+        return $this->splitList($phpcsFile, $open, $phpcsFile->getTokens()[$open]['parenthesis_closer']);
+    }
+
+    /**
+     * Split the top-level, comma-separated items between two tokens.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $open      Opening parenthesis or bracket.
+     * @param int  $close     Matching closer.
+     *
+     * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each item.
+     */
+    private function splitList(File $phpcsFile, int $open, int $close): array
+    {
         $tokens    = $phpcsFile->getTokens();
-        $close     = $tokens[$open]['parenthesis_closer'];
         $arguments = [];
         $start     = $open + 1;
 
