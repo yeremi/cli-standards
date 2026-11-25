@@ -30,7 +30,10 @@ use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 use PHPCSUtils\BackCompat\BCTokens;
+use PHPCSUtils\Utils\FunctionDeclarations;
+use PHPCSUtils\Utils\ObjectDeclarations;
 use PHPCSUtils\Utils\PassedParameters;
+use PHPCSUtils\Utils\Scopes;
 use PHPCSUtils\Utils\TextStrings;
 
 abstract class AbstractCommandSniff implements Sniff
@@ -111,13 +114,6 @@ abstract class AbstractCommandSniff implements Sniff
     private const NESTED_CALLABLES = [T_CLOSURE, T_FUNCTION, T_FN, T_ANON_CLASS];
 
     /**
-     * Class-like scopes in which a function is a method.
-     *
-     * @var array<int|string>
-     */
-    private const OO_SCOPES = [T_CLASS, T_TRAIT, T_ANON_CLASS, T_INTERFACE];
-
-    /**
      * Determine whether a function token declares a WP-CLI command handler.
      *
      * T_FUNCTION: see the class description. T_CLOSURE/T_FN: only when the
@@ -145,7 +141,7 @@ abstract class AbstractCommandSniff implements Sniff
             return false;
         }
 
-        $name = $phpcsFile->getDeclarationName($functionPtr);
+        $name = FunctionDeclarations::getName($phpcsFile, $functionPtr);
         if ($name === null || $name === '') {
             return false;
         }
@@ -482,7 +478,7 @@ abstract class AbstractCommandSniff implements Sniff
             return null;
         }
 
-        return $phpcsFile->getDeclarationName($functionPtr);
+        return FunctionDeclarations::getName($phpcsFile, $functionPtr);
     }
 
     /**
@@ -1118,7 +1114,7 @@ abstract class AbstractCommandSniff implements Sniff
             $owner = $tokens[$i]['conditions'];
             end($owner);
             if (key($owner) === $classPtr && isset($tokens[$i]['scope_closer'])) {
-                $name = $phpcsFile->getDeclarationName($i);
+                $name = FunctionDeclarations::getName($phpcsFile, $i);
                 if ($name !== null) {
                     $methods[strtolower($name)] = $i;
                 }
@@ -1195,7 +1191,7 @@ abstract class AbstractCommandSniff implements Sniff
             return true;
         }
 
-        $name = (string) $phpcsFile->getDeclarationName($classPtr);
+        $name = (string) ObjectDeclarations::getName($phpcsFile, $classPtr);
 
         if ($this->isIgnoredClass($phpcsFile, $classPtr, $name) || $this->isTaggedNotACommand($phpcsFile, $classPtr)) {
             return false;
@@ -1339,12 +1335,9 @@ abstract class AbstractCommandSniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         // Arrow functions are not part of "conditions"; check them first.
-        $fn = $phpcsFile->findPrevious(T_FN, $stackPtr);
-        while ($fn !== false) {
-            if (isset($tokens[$fn]['scope_closer']) && $tokens[$fn]['scope_closer'] >= $stackPtr) {
-                return $fn;
-            }
-            $fn = $phpcsFile->findPrevious(T_FN, ($fn - 1));
+        $fn = Scope::enclosingArrowFunction($phpcsFile, $stackPtr);
+        if ($fn !== null) {
+            return $fn;
         }
 
         $conditions = array_reverse($tokens[$stackPtr]['conditions'], true);
@@ -1367,16 +1360,7 @@ abstract class AbstractCommandSniff implements Sniff
      */
     private function isMethod(File $phpcsFile, int $functionPtr): bool
     {
-        $tokens     = $phpcsFile->getTokens();
-        $conditions = $tokens[$functionPtr]['conditions'];
-
-        if ($conditions === []) {
-            return false;
-        }
-
-        end($conditions);
-
-        return in_array(current($conditions), self::OO_SCOPES, true);
+        return Scopes::isOOMethod($phpcsFile, $functionPtr);
     }
 
     /**
