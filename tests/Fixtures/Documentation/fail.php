@@ -28,8 +28,10 @@ class Docs_Fail_Command {
      * [--short]
      * : Print a one-line summary.
      */
+    #[ReturnTypeWillChange]
     public function health( $args, $assoc_args ) {
-        // ❌ G2: no ## EXAMPLES. ⚠ G4: no @since.
+        // ❌ G2: no ## EXAMPLES. ⚠ G4: no @since. The docblock itself is found
+        // through the attribute, so no MissingDocblock is reported.
         WP_CLI::success( 'Healthy.' );
     }
 

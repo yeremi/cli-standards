@@ -182,7 +182,8 @@ abstract class AbstractCommandSniff implements Sniff
     /**
      * Find the docblock preceding a function declaration.
      *
-     * Skips modifiers placed between the docblock and the function keyword.
+     * Skips modifiers and PHP 8 attributes placed between the docblock and
+     * the function keyword.
      *
      * @param File $phpcsFile The file being scanned.
      * @param int  $stackPtr  Position of the T_FUNCTION token.
@@ -204,6 +205,13 @@ abstract class AbstractCommandSniff implements Sniff
         ];
 
         $prev = $phpcsFile->findPrevious($skip, ($stackPtr - 1), null, true);
+
+        while ($prev !== false
+            && $tokens[$prev]['code'] === T_ATTRIBUTE_END
+            && isset($tokens[$prev]['attribute_opener'])
+        ) {
+            $prev = $phpcsFile->findPrevious($skip, ($tokens[$prev]['attribute_opener'] - 1), null, true);
+        }
 
         if ($prev !== false && $tokens[$prev]['code'] === T_DOC_COMMENT_CLOSE_TAG) {
             return $tokens[$prev]['comment_opener'];

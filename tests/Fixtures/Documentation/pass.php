@@ -39,7 +39,9 @@ class Docs_Pass_Command {
      *
      * @since 1.0.0
      */
+    #[ReturnTypeWillChange]
     public function version( $args, $assoc_args ) {
+        // ✅ Docblock is found even with an attribute in between.
         WP_CLI::line( $this->format_version( '1.0.0' ) );
     }
 
