@@ -21,7 +21,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - `composer docs` regenerates `docs/sniffs.md`; `composer test:docs` (run in CI) fails when a sniff has no doc or the file is stale (#22)
 - Safe autofixes for `phpcbf`: `ConfirmPassthrough` passes the assoc args to `WP_CLI::confirm()`, and `OutputMethod` turns `echo`/`print` statements that end with a newline into `WP_CLI::line()` (#22)
 - Fixture runner can check `phpcbf` output against a `.fixed` file; Autofix fixtures (#22)
+- PHPUnit sniff tests (`composer test:unit`): every sniff runs over every shared fixture and is compared per line, on PHP_CodeSniffer 3 and 4; `composer test:update` regenerates the expectations (#21)
 - DocumentedFlags fixtures (#17)
+
+### Changed
+
+- Fixtures renamed to unique names (`safety-fail.php`, ...); `scripts/verify-fixtures.php` now only runs end-to-end ruleset checks (#21)
+- `OutputMethod` autofix drops a concatenated `"\n"` entirely: `echo $x . "\n";` becomes `WP_CLI::line( $x );` instead of `WP_CLI::line( $x . "" );` (#21)
 
 ### Fixed
 

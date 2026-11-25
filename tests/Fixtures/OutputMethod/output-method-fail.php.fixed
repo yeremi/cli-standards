@@ -1,0 +1,33 @@
+<?php
+/**
+ * Test fixture: OutputMethod — should FAIL.
+ *
+ * This file contains echo/print inside a WP-CLI command context.
+ */
+
+class My_CLI_Command {
+
+    public function list_items( $args, $assoc_args ) {
+        $items = get_posts();
+
+        // ❌ VIOLATION: echo in CLI context.
+        WP_CLI::line( "Found " . count($items) . " items" );
+
+        // ❌ VIOLATION: print in CLI context.
+        WP_CLI::line( "Processing..." );
+
+        foreach ( $items as $item ) {
+            // ❌ VIOLATION: echo for output.
+            WP_CLI::line( $item->post_title );
+        }
+
+        $this->print_footer();
+
+        WP_CLI::success( 'Done.' );
+    }
+
+    private function print_footer() {
+        // ❌ VIOLATION: echo in a helper the command calls.
+        WP_CLI::line( "--" );
+    }
+}

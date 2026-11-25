@@ -16,7 +16,7 @@ Good contributions for this repository usually fall into one of these categories
 
 - Check whether the change is already discussed in an issue
 - Keep the change scoped to one problem when possible
-- If you change sniff behavior, update or add fixtures under `tests/Fixtures/`
+- If you change sniff behavior, update or add fixtures under `tests/Fixtures/` and the expected reports in `CLIStandards/Tests/` (see [Tests](#tests))
 - Decide whether the change can add reports to code that passes today (see below)
 - Run `composer test` and `composer test:docs`
 
@@ -26,6 +26,16 @@ Good contributions for this repository usually fall into one of these categories
 composer install
 composer test
 ```
+
+## Tests
+
+- `composer test:unit` (PHPUnit) runs every sniff over every fixture in `tests/Fixtures/` and compares errors and warnings **per line** with `CLIStandards/Tests/<Category>/<Sniff>UnitTest.php`. Fixtures not listed in a test expect no reports from that sniff, so every `*-pass.php` file is checked by every sniff.
+- Mark each case in a fixture with a comment: `❌` (error), `⚠` (warning), `✅` (must not report), `🔧` (fixed by phpcbf).
+- Add new cases at the end of a fixture when you can: inserting lines in the middle moves the expected line numbers of every sniff that reports below.
+- After changing fixtures or sniffs, run `composer test:update` to rewrite the expectations from the current reports, then **review the diff** line by line against the fixture comments. The script records behavior; it does not decide whether it is right.
+- If a sniff fixes code, the fixture needs `<fixture>.fixed` with the expected `phpcbf` result. Keep fixable reports of one sniff per fixture, since one `.fixed` file serves every sniff.
+- `composer test:fixtures` (`scripts/verify-fixtures.php`) checks what unit tests cannot: the full `CLIStandards` and `CLIStandardsMust` rulesets, rulesets with custom properties (fixtures with a sibling `.xml`, which the unit tests skip), and `phpcbf` with every sniff enabled.
+- CI runs everything on PHP 7.4 and 8.3, with PHP_CodeSniffer 3 and 4.
 
 ## Sniff Changes
 

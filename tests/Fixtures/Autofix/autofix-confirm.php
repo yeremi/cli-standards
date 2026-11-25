@@ -1,36 +1,9 @@
 <?php
 /**
- * Test fixture: safe autofixes — phpcbf must turn this file into fail.php.fixed.
+ * Test fixture: safe autofixes (ConfirmPassthrough) — phpcbf must turn this file into autofix-confirm.php.fixed.
  */
 
-class Autofix_Command {
-
-    /**
-     * Print a summary.
-     *
-     * ## EXAMPLES
-     *
-     *     wp acme summary
-     *
-     * @since 1.0.0
-     */
-    public function summary( $args, $assoc_args ) {
-        $total = acme_total();
-
-        // 🔧 Output that already ends with a newline becomes WP_CLI::line().
-        echo "Report\n";
-        echo "Total: {$total}\n";
-        echo $total . PHP_EOL;
-        print "Done.\n";
-        if ( $total > 10 ) echo "Large\n";
-
-        // ❌ Not fixable: WP_CLI::line() would add a newline.
-        echo $total;
-
-        // ❌ Not fixable: several expressions, or an escaped backslash.
-        echo "a", "b\n";
-        echo "C:\\n";
-    }
+class Autofix_Confirm_Command {
 
     /**
      * Rotate the API keys.

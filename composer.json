@@ -36,16 +36,25 @@
         }
     },
     "scripts": {
-        "test": "php scripts/verify-fixtures.php",
-        "test:fixtures": "@test",
+        "test": [
+            "@test:unit",
+            "@test:fixtures"
+        ],
+        "test:unit": "phpunit",
+        "test:fixtures": "php scripts/verify-fixtures.php",
         "test:fixtures:verbose": "php scripts/verify-fixtures.php --verbose",
+        "test:update": "php scripts/update-test-expectations.php",
         "test:docs": "php scripts/generate-docs.php --check",
         "docs": "php scripts/generate-docs.php"
     },
     "scripts-descriptions": {
-        "test": "Run the fixture-based regression suite for the CLIStandards standard.",
-        "test:fixtures": "Alias for the fixture-based regression suite.",
-        "test:fixtures:verbose": "Run the fixture-based regression suite with per-fixture details."
+        "test": "Run the sniff unit tests and the ruleset end-to-end checks.",
+        "test:unit": "Run each sniff over the shared fixtures and compare reports per line (PHPUnit).",
+        "test:fixtures": "Run the ruleset end-to-end checks (CLIStandards, CLIStandardsMust, custom rulesets, phpcbf).",
+        "test:fixtures:verbose": "Run the ruleset end-to-end checks with per-case details.",
+        "test:update": "Regenerate the per-line expectations of the sniff unit tests (review the diff).",
+        "test:docs": "Check that every sniff has a doc and docs/sniffs.md is up to date.",
+        "docs": "Regenerate docs/sniffs.md from the sniff docs."
     },
     "config": {
         "allow-plugins": {
@@ -54,5 +63,8 @@
         "sort-packages": true
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    }
 }

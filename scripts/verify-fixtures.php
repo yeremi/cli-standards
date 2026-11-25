@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 /*
- * Fixture regression suite.
+ * Ruleset end-to-end checks.
+ *
+ * Per-sniff, per-line expectations live in the PHPUnit tests
+ * (CLIStandards/Tests, `composer test:unit`). This script covers what they
+ * cannot: the full CLIStandards and CLIStandardsMust rulesets (severities,
+ * exclusions), rulesets with custom properties (tests/Fixtures/*.xml), and
+ * phpcbf with every sniff enabled.
  *
  * Each case runs PHPCS with one standard (or ruleset file) against one fixture
  * and compares the reported messages per sniff source code
@@ -27,7 +33,7 @@ if (!is_file($phpcs)) {
 $cases = [
     [
         'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
+        'fixture' => 'tests/Fixtures/Comprehensive/comprehensive-fail.php',
         'errors' => 10,
         'warnings' => 7,
         'sources' => [
@@ -47,7 +53,7 @@ $cases = [
     ],
     [
         'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/CLILinter/fail.php',
+        'fixture' => 'tests/Fixtures/CLILinter/clilinter-fail.php',
         'errors' => 0,
         'warnings' => 7,
         'sources' => [
@@ -61,83 +67,12 @@ $cases = [
         ],
     ],
     [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/OutputMethod/fail.php',
-        'errors' => 5,
-        'warnings' => 1,
-        'sources' => [
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
-            'CLIStandards.Output.FormatSupport.MissingFormatSupport' => 1,
-            'CLIStandards.Output.OutputMethod.RawOutput' => 4,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Safety/fail.php',
-        'errors' => 3,
-        'warnings' => 8,
-        'sources' => [
-            'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 1,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 1,
-            'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 3,
-            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 3,
-            'CLIStandards.Safety.DryRunSupport.MissingDryRun' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Documentation/fail.php',
-        'errors' => 8,
-        'warnings' => 3,
-        'sources' => [
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
-            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 2,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 1,
-            'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 1,
-            'CLIStandards.Output.AvailableFields.MissingAvailableFields' => 1,
-        ],
-    ],
-    [
         'standard' => 'tests/Fixtures/Documentation/ignore-methods.xml',
         'fixture' => 'tests/Fixtures/Documentation/ignore-methods.php',
         'errors' => 1,
         'warnings' => 0,
         'sources' => [
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Arguments/fail.php',
-        'errors' => 2,
-        'warnings' => 6,
-        'sources' => [
-            'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 2,
-            'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 2,
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 2,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 2,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Scalability/fail.php',
-        'errors' => 0,
-        'warnings' => 5,
-        'sources' => [
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 2,
-            'CLIStandards.Scalability.ProgressBar.MissingProgressBar' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Classification/fail.php',
-        'errors' => 4,
-        'warnings' => 8,
-        'sources' => [
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 4,
-            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 4,
-            'CLIStandards.Safety.DryRunSupport.MissingDryRun' => 4,
         ],
     ],
     [
@@ -150,74 +85,6 @@ $cases = [
         ],
     ],
     [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Delegation/fail.php',
-        'errors' => 3,
-        'warnings' => 0,
-        'sources' => [
-            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Registration/fail.php',
-        'errors' => 4,
-        'warnings' => 5,
-        'sources' => [
-            'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 1,
-            'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 1,
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 1,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 1,
-            'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 1,
-            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 1,
-            'CLIStandards.Safety.DryRunSupport.MissingDryRun' => 1,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/ErrorHandling/fail.php',
-        'errors' => 1,
-        'warnings' => 7,
-        'sources' => [
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 1,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 2,
-            'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 1,
-            'CLIStandards.ErrorHandling.WpErrorHandling.UncapturedWpError' => 1,
-            'CLIStandards.ErrorHandling.WpErrorHandling.UncheckedWpError' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Confirm/fail.php',
-        'errors' => 2,
-        'warnings' => 5,
-        'sources' => [
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 1,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 4,
-            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 2,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/CommandStructure/fail.php',
-        'errors' => 3,
-        'warnings' => 0,
-        'sources' => [
-            'CLIStandards.CommandStructure.CommandRegistration.MissingNamespace' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Classes/fail.php',
-        'errors' => 4,
-        'warnings' => 0,
-        'sources' => [
-            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
-        ],
-    ],
-    [
         'standard' => 'tests/Fixtures/Classes/ignore-classes.xml',
         'fixture' => 'tests/Fixtures/Classes/ignore-classes.php',
         'errors' => 1,
@@ -227,64 +94,15 @@ $cases = [
         ],
     ],
     [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/DocumentedFlags/fail.php',
-        'errors' => 0,
-        'warnings' => 14,
-        'sources' => [
-            'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 4,
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 7,
-            'CLIStandards.Documentation.DocumentedFlags.UnusedFlag' => 3,
-        ],
-    ],
-    [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/DocumentedFlags/fail.php',
+        'fixture' => 'tests/Fixtures/DocumentedFlags/documented-flags-fail.php',
         'errors' => 0,
         'warnings' => 0,
         'sources' => [],
     ],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/DocumentedFlags/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Autofix/fail.php',
-        'fixed' => 'tests/Fixtures/Autofix/fail.php.fixed',
-        'errors' => 11,
-        'warnings' => 0,
-        'sources' => [
-            'CLIStandards.Output.OutputMethod.RawOutput' => 8,
-            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 3,
-        ],
-    ],
-    [
-        'standard' => 'CLIStandards',
-        'fixture' => 'tests/Fixtures/Names/fail.php',
-        'errors' => 2,
-        'warnings' => 4,
-        'sources' => [
-            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 1,
-            'CLIStandards.ErrorHandling.ErrorSeverity.WpDieInCli' => 1,
-            'CLIStandards.ErrorHandling.WpErrorHandling.UncheckedWpError' => 1,
-            'CLIStandards.Output.FormatSupport.MissingFormatSupport' => 1,
-            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 1,
-            'CLIStandards.Scalability.ProgressBar.MissingProgressBar' => 1,
-        ],
-    ],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Names/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classes/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/CommandStructure/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Confirm/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/ErrorHandling/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Registration/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Delegation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classification/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Safety/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Documentation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
-    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Scalability/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
+        'fixture' => 'tests/Fixtures/Comprehensive/comprehensive-fail.php',
         'errors' => 10,
         'warnings' => 0,
         'sources' => [
@@ -297,10 +115,16 @@ $cases = [
             'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 2,
         ],
     ],
-    ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/CLILinter/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/Documentation/fail.php',
+        'fixture' => 'tests/Fixtures/CLILinter/clilinter-fail.php',
+        'errors' => 0,
+        'warnings' => 0,
+        'sources' => [],
+    ],
+    [
+        'standard' => 'CLIStandardsMust',
+        'fixture' => 'tests/Fixtures/Documentation/documentation-fail.php',
         'errors' => 8,
         'warnings' => 0,
         'sources' => [
@@ -311,7 +135,7 @@ $cases = [
     ],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/Classification/fail.php',
+        'fixture' => 'tests/Fixtures/Classification/classification-fail.php',
         'errors' => 4,
         'warnings' => 0,
         'sources' => [
@@ -320,7 +144,7 @@ $cases = [
     ],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/Registration/fail.php',
+        'fixture' => 'tests/Fixtures/Registration/registration-fail.php',
         'errors' => 4,
         'warnings' => 0,
         'sources' => [
@@ -332,21 +156,47 @@ $cases = [
     ],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/ErrorHandling/fail.php',
+        'fixture' => 'tests/Fixtures/ErrorHandling/error-handling-fail.php',
         'errors' => 1,
         'warnings' => 0,
         'sources' => [
             'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 1,
         ],
     ],
-    ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/Scalability/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
-        'fixture' => 'tests/Fixtures/Safety/fail.php',
+        'fixture' => 'tests/Fixtures/Scalability/scalability-fail.php',
+        'errors' => 0,
+        'warnings' => 0,
+        'sources' => [],
+    ],
+    [
+        'standard' => 'CLIStandardsMust',
+        'fixture' => 'tests/Fixtures/Safety/safety-fail.php',
         'errors' => 3,
         'warnings' => 0,
         'sources' => [
             'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 3,
+        ],
+    ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Autofix/autofix-output.php',
+        'fixed' => 'tests/Fixtures/Autofix/autofix-output.php.fixed',
+        'errors' => 8,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Output.OutputMethod.RawOutput' => 8,
+        ],
+    ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Autofix/autofix-confirm.php',
+        'fixed' => 'tests/Fixtures/Autofix/autofix-confirm.php.fixed',
+        'errors' => 3,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 3,
         ],
     ],
 ];
