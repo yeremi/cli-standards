@@ -63,6 +63,31 @@ class Docs_Pass_Command {
         WP_CLI::success( 'Done.' );
     }
 
+    /**
+     * List registered items.
+     *
+     * ## OPTIONS
+     *
+     * [--format=<format>]
+     * : Output format.
+     *
+     * ## AVAILABLE FIELDS
+     *
+     * * id
+     * * name
+     *
+     * ## EXAMPLES
+     *
+     *     wp myplugin docs list_items --format=json
+     *
+     * @since 1.0.0
+     */
+    public function list_items( $args, $assoc_args ) {
+        // ✅ Section headings on their own line, including multi-word ones.
+        $format = WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
+        WP_CLI\Utils\format_items( $format, [], [ 'id', 'name' ] );
+    }
+
     // ✅ Private helper: not a subcommand.
     private function format_version( string $version ): string {
         WP_CLI::debug( 'Formatting version.' );

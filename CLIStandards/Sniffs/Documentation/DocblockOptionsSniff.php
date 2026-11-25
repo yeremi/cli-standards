@@ -60,10 +60,10 @@ class DocblockOptionsSniff extends AbstractCommandSniff
             return;
         }
 
-        // Check if the docblock contains ## OPTIONS.
+        // Check if the docblock contains an ## OPTIONS heading.
         $docContent = $this->getDocblockContent($phpcsFile, $docblock);
 
-        if (stripos($docContent, '## OPTIONS') === false) {
+        if (!$this->docblockHasSection($docContent, 'OPTIONS')) {
             $phpcsFile->addError(
                 'WP-CLI command docblock must contain a "## OPTIONS" section documenting all flags.',
                 $stackPtr,

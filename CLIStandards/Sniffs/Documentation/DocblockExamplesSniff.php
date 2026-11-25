@@ -58,7 +58,7 @@ class DocblockExamplesSniff extends AbstractCommandSniff
 
         $docContent = $this->getDocblockContent($phpcsFile, $docblock);
 
-        if (stripos($docContent, '## EXAMPLES') === false) {
+        if (!$this->docblockHasSection($docContent, 'EXAMPLES')) {
             $phpcsFile->addError(
                 'WP-CLI command docblock must contain a "## EXAMPLES" section with at least one realistic invocation.',
                 $stackPtr,
