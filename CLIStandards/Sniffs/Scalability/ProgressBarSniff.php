@@ -68,6 +68,14 @@ class ProgressBarSniff extends AbstractCommandSniff
     private const CONSTANT_TOKENS = [T_STRING, T_SELF, T_STATIC, T_PARENT, T_DOUBLE_COLON, T_NS_SEPARATOR];
 
     /**
+     * How far back to look for make_progress_bar() when a loop is not inside
+     * a function (file scope).
+     *
+     * @var int
+     */
+    private const FILE_SCOPE_LOOKBACK = 50;
+
+    /**
      * Returns the token types that this sniff is interested in.
      *
      * @return array<int>
@@ -126,6 +134,11 @@ class ProgressBarSniff extends AbstractCommandSniff
     /**
      * Whether make_progress_bar() is called before or inside the loop.
      *
+     * The search covers the enclosing function, closure or arrow function from
+     * its opening brace to the end of the loop, so a progress bar created in a
+     * neighboring method never counts. At file scope, it falls back to the
+     * last FILE_SCOPE_LOOKBACK tokens before the loop.
+     *
      * @param File $phpcsFile The file being scanned.
      * @param int  $stackPtr  Position of the loop token.
      * @param int  $loopEnd   Position of the loop's closing brace.
@@ -134,10 +147,14 @@ class ProgressBarSniff extends AbstractCommandSniff
      */
     private function hasProgressBar(File $phpcsFile, int $stackPtr, int $loopEnd): bool
     {
-        $tokens = $phpcsFile->getTokens();
+        $tokens   = $phpcsFile->getTokens();
+        $callable = $this->findEnclosingCallable($phpcsFile, $stackPtr);
 
-        // Look backward up to 30 tokens for the progress bar creation.
-        $searchStart = max(0, $stackPtr - 50);
+        if ($callable !== null && isset($tokens[$callable]['scope_opener'])) {
+            $searchStart = $tokens[$callable]['scope_opener'];
+        } else {
+            $searchStart = max(0, $stackPtr - self::FILE_SCOPE_LOOKBACK);
+        }
 
         for ($i = $searchStart; $i < $loopEnd; $i++) {
             if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'make_progress_bar') {

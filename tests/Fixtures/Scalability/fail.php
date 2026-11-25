@@ -40,6 +40,7 @@ class Scalability_Fail_Command {
      * @since 1.0.0
      */
     public function audit( $args, $assoc_args ) {
+        $this->open_report();
         $this->mark_users();
 
         // ⚠ F1: only messages, but over an unbounded source (get_posts).
@@ -54,8 +55,14 @@ class Scalability_Fail_Command {
         }
     }
 
+    private function open_report() {
+        // This progress bar belongs to open_report(); it must not count for
+        // the loop in mark_users(), a few tokens below.
+        $bar = WP_CLI\Utils\make_progress_bar( 'Report', 1 );
+    }
+
     private function mark_users() {
-        // ⚠ F1: bulk loop over an unbounded source.
+        // ⚠ F1: bulk loop; the progress bar above is in another method.
         foreach ( get_users() as $user ) {
             update_user_meta( $user->ID, 'audited', 1 );
             WP_CLI::log( "Audited {$user->ID}" );

@@ -23,6 +23,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Fixed
 
 - `$assocArgs` (camelCase) and other names for the second handler parameter are recognized as WP-CLI assoc args by the Documentation, `FlagNaming` and `FlagExtraction` sniffs (#3)
+- `ProgressBar` looks for `make_progress_bar()` only inside the enclosing function, so a progress bar in a neighboring method no longer hides a missing one (#5)
 
 ## [1.0.0] - 2026-04-23
 
