@@ -77,9 +77,6 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
             return;
         }
 
-        $scopeStart = $tokens[$stackPtr]['scope_opener'];
-        $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
-
         if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
@@ -100,14 +97,16 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
             }
         }
 
-        // Check function body for batch-size key access.
+        // Check the command and the same-class methods it calls for batch-size key access.
         if (!$hasBatchSizeFlag) {
-            for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-                if ($tokens[$i]['code'] === T_CONSTANT_ENCAPSED_STRING) {
-                    $val = trim($tokens[$i]['content'], "\"'");
-                    if (in_array($val, ['batch-size', 'batch_size', 'per-page', 'per_page'], true)) {
-                        $hasBatchSizeFlag = true;
-                        break;
+            foreach ($this->getReachableBodies($phpcsFile, $stackPtr) as [$start, $end]) {
+                for ($i = $start; $i < $end; $i++) {
+                    if ($tokens[$i]['code'] === T_CONSTANT_ENCAPSED_STRING) {
+                        $val = trim($tokens[$i]['content'], "\"'");
+                        if (in_array($val, ['batch-size', 'batch_size', 'per-page', 'per_page'], true)) {
+                            $hasBatchSizeFlag = true;
+                            break 2;
+                        }
                     }
                 }
             }

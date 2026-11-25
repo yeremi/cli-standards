@@ -120,6 +120,28 @@ Sniffs that depend on what a command does (`ConfirmOnDelete`, `DryRunSupport`, `
 
 Flag sniffs recognize the assoc args as `$assoc_args`, `$assocArgs`, or the second parameter of a command handler whatever its name.
 
+### Commands that delegate
+
+Thin commands that hand work to helpers are common, so the safety and output checks look beyond the command method:
+
+- **Same-class helpers are followed.** `ConfirmOnDelete` (`WP_CLI::confirm()`), `DryRunSupport` (`dry-run` handling), `FormatSupport` (`format_items()`) and `BatchSizeFlag` (`batch-size` handling) also look inside methods the command calls through `$this->…()`, `self::…()` or `static::…()`, up to two call levels.
+- **Other classes cannot be followed** by a static check. Declare the delegation in the command's docblock, with a reason:
+
+```php
+/**
+ * Wipe tenant data.
+ *
+ * …
+ * @cli-standards confirm-delegated Tenant_Wiper::run() calls WP_CLI::confirm() with $assoc_args
+ * @cli-standards dry-run-delegated Tenant_Wiper::run() honors --dry-run
+ */
+public function wipe( $args, $assoc_args ) {
+    $this->wiper->run( $assoc_args );
+}
+```
+
+Available tags: `confirm-delegated`, `dry-run-delegated`, `format-delegated`. A tag without a reason is ignored, and the report says so. Unlike `phpcs:ignore`, the tag keeps the decision and its reason next to the command, where reviewers see it.
+
 ## Configuration
 
 Public methods of a registered command class are subcommands in WP-CLI, so `run()` or `services()` are checked like any other command. If a command class has public lifecycle methods that are never invoked from the command line, exclude them by name (case-insensitive) on any command-aware sniff:
