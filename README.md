@@ -21,6 +21,12 @@ vendor/bin/phpcs -i
 
 You should see `CLIStandards` and `CLIStandardsMust` in the installed standards list.
 
+If this standard gates your CI, pin it to patch updates (see [Versioning and upgrades](#versioning-and-upgrades)):
+
+```bash
+composer require --dev "yeremi/cli-standards:~1.1.0"
+```
+
 ## Usage
 
 Run the standard against your CLI command code:
@@ -138,6 +144,26 @@ Public methods of a registered command class are subcommands in WP-CLI, so `run(
     </properties>
 </rule>
 ```
+
+## Versioning and upgrades
+
+This package follows [Semantic Versioning](https://semver.org/). For a coding standard, the question that matters is whether an update can make your CI fail on code that passed before. The rules are:
+
+| Release | May contain | Can add reports to unchanged code? |
+|---------|-------------|:----------------------------------:|
+| Patch (`1.1.x`) | Fixes that only remove false positives, crash fixes, documentation | No |
+| Minor (`1.x.0`) | New sniffs (as warnings), new ruleset properties, detection fixes that also catch previously missed violations | Yes, listed under **May add reports** in the [CHANGELOG](CHANGELOG.md) |
+| Major (`x.0.0`) | Renamed or removed sniffs or error codes, severity changes (warning ↔ error), changes to `CLIStandardsMust`, higher PHP or PHPCS requirements | Yes |
+
+Additional commitments:
+
+- New sniffs start as warnings in `CLIStandards`. They only become errors, or join `CLIStandardsMust`, in a major release.
+- Error codes (e.g. `CLIStandards.Safety.ConfirmOnDelete.MissingConfirm`) are stable within a major version, so `phpcs:ignore` annotations and ruleset exclusions keep working.
+
+Choosing a constraint:
+
+- `~1.1.0`: patch updates only. Recommended when the standard gates CI; upgrade minors deliberately after reading **May add reports**.
+- `^1.1`: all 1.x updates. Fine for advisory runs or when you review new reports as they come.
 
 ## Add To `phpcs.xml.dist`
 
