@@ -34,6 +34,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Registration fixtures (#19)
 - ErrorHandling fixtures (#25)
 - Confirm fixtures (#31)
+- CommandStructure fixtures (#32)
 - Scalability fixtures, including pass cases (#4)
 
 ### Changed
@@ -55,6 +56,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - `ErrorSeverity` ignores `exit`/`die` at file scope, such as the `if ( ! defined( 'ABSPATH' ) ) { exit; }` direct-access guard (#29)
 - Methods that call `WP_CLI::add_command()` and take no assoc-args parameter are registration bootstraps, not commands, even when they also log; `WP_CLI::class` no longer counts as a WP-CLI call; `ProgressBar` ignores loops that only register commands (#30)
 - `ConfirmPassthrough` accepts `WP_CLI::confirm( $msg )` inside an `if` that checks the `yes` flag on the assoc args, e.g. `if ( ! isset( $assoc_args['yes'] ) )` (#31)
+- `CommandRegistration` accepts a single-word name for a class command group (`WP_CLI::add_command( 'acme', Acme_Command::class )`), since its methods are the namespaced subcommands; it still reports groups named after a WP-CLI core command such as `user` or `cache` (#32)
 
 ## [1.0.0] - 2026-04-23
 

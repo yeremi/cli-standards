@@ -5,8 +5,8 @@
  * This file demonstrates every anti-pattern the standard catches.
  */
 
-// ❌ A1: Command name without namespace.
-WP_CLI::add_command( 'mycommand', 'My_Bad_Command' );
+// ❌ A1: a single-word command group that takes over WP-CLI core's "cache".
+WP_CLI::add_command( 'cache', 'My_Bad_Command' );
 
 class My_Bad_Command {
 

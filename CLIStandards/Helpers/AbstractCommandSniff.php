@@ -814,7 +814,7 @@ abstract class AbstractCommandSniff implements Sniff
      *
      * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each argument.
      */
-    private function splitArguments(File $phpcsFile, int $open): array
+    protected function splitArguments(File $phpcsFile, int $open): array
     {
         return $this->splitList($phpcsFile, $open, $phpcsFile->getTokens()[$open]['parenthesis_closer']);
     }

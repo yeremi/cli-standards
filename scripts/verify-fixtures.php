@@ -185,6 +185,16 @@ $cases = [
             'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 2,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/CommandStructure/fail.php',
+        'errors' => 3,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.CommandStructure.CommandRegistration.MissingNamespace' => 3,
+        ],
+    ],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/CommandStructure/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Confirm/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/ErrorHandling/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Registration/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],

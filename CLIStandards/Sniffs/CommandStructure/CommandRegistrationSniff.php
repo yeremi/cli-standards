@@ -18,11 +18,25 @@
 
 namespace CLIStandards\Sniffs\CommandStructure;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class CommandRegistrationSniff implements Sniff
+class CommandRegistrationSniff extends AbstractCommandSniff
 {
+    /**
+     * Top-level WP-CLI core command groups a plugin must not take over.
+     *
+     * @var array<string>
+     */
+    private const CORE_COMMANDS = [
+        'cache', 'cap', 'cli', 'comment', 'config', 'core', 'cron', 'db', 'embed',
+        'eval', 'eval-file', 'export', 'help', 'i18n', 'import', 'language',
+        'maintenance-mode', 'media', 'menu', 'network', 'option', 'package',
+        'plugin', 'post', 'post-type', 'rewrite', 'role', 'scaffold',
+        'search-replace', 'server', 'shell', 'sidebar', 'site', 'super-admin',
+        'taxonomy', 'term', 'theme', 'transient', 'user', 'widget',
+    ];
+
     /**
      * Returns the token types that this sniff is interested in.
      *
@@ -76,14 +90,19 @@ class CommandRegistrationSniff implements Sniff
         $commandName = trim($tokens[$firstArg]['content'], "\"'");
 
         // Validate: command name must contain at least one space
-        // (indicating namespace + subcommand).
-        if (strpos($commandName, ' ') === false) {
-            $phpcsFile->addError(
-                'WP_CLI::add_command() command name "%s" must include a namespace: use "vendor subcommand" format (e.g., "myplugin list" instead of "list").',
-                $firstArg,
-                'MissingNamespace',
-                [$commandName]
-            );
+        // (indicating namespace + subcommand). A class registered under a
+        // single word is a command group: its methods become the subcommands
+        // ("wp acme sync"), so the word already is the namespace. It still
+        // must not take over a WP-CLI core command group.
+        $arguments  = $this->splitArguments($phpcsFile, $openParen);
+        $isGroup    = isset($arguments[1]) && $this->isClassCallable($phpcsFile, $arguments[1]);
+        $isCoreName = in_array(strtolower($commandName), self::CORE_COMMANDS, true);
+
+        if (strpos($commandName, ' ') === false && (!$isGroup || $isCoreName)) {
+            $message = $isGroup
+                ? 'WP_CLI::add_command() command group "%s" takes over a WP-CLI core command: use a plugin-specific name (e.g., "myplugin").'
+                : 'WP_CLI::add_command() command name "%s" must include a namespace: use "vendor subcommand" format (e.g., "myplugin list" instead of "list").';
+            $phpcsFile->addError($message, $firstArg, 'MissingNamespace', [$commandName]);
             return;
         }
 
@@ -124,5 +143,57 @@ class CommandRegistrationSniff implements Sniff
         }
 
         return true;
+    }
+
+    /**
+     * Whether an add_command() callable argument is a class (command group)
+     * rather than a single command.
+     *
+     * Classes: `Foo::class`, `new Foo()`, a string class name such as
+     * 'Acme_Command' or 'Acme\Command', or `__NAMESPACE__ . '\Command'`.
+     * Functions ('acme_ping'), 'Class::method' strings, array callables and
+     * closures are single commands.
+     *
+     * @param File               $phpcsFile The file being scanned.
+     * @param array{0: int, 1: int} $range  Argument token range.
+     *
+     * @return bool
+     */
+    private function isClassCallable(File $phpcsFile, array $range): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $first  = $tokens[$range[0]];
+        $last   = $tokens[$range[1]];
+
+        if ($first['code'] === T_NEW) {
+            return true;
+        }
+
+        if ($last['code'] === T_STRING && strtolower($last['content']) === 'class') {
+            $colon = $phpcsFile->findPrevious(T_WHITESPACE, ($range[1] - 1), $range[0], true);
+
+            return $colon !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON;
+        }
+
+        // String literals, optionally concatenated with __NAMESPACE__.
+        $text = '';
+        for ($i = $range[0]; $i <= $range[1]; $i++) {
+            $code = $tokens[$i]['code'];
+            if ($code === T_CONSTANT_ENCAPSED_STRING) {
+                $text .= substr($tokens[$i]['content'], 1, -1);
+            } elseif ($code === T_NS_C) {
+                $text .= 'Namespace\\';
+            } elseif ($code !== T_WHITESPACE && $code !== T_STRING_CONCAT) {
+                return false;
+            }
+        }
+
+        if ($text === '' || strpos($text, '::') !== false) {
+            return false;
+        }
+
+        // Class names are namespaced or start with an uppercase letter;
+        // function names are conventionally lowercase.
+        return strpos($text, '\\') !== false || ctype_upper(ltrim($text, '\\')[0] ?? '');
     }
 }
