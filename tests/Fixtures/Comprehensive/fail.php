@@ -28,8 +28,8 @@ class My_Bad_Command {
             'post_type'     => $post_type,
         ]);
 
-        // ❌ D3: Unchecked WP_Error.
-        $result = wp_delete_post( $posts[0]->ID );
+        // ❌ D3: Unchecked WP_Error (wp_delete_term() can return WP_Error).
+        $result = wp_delete_term( 1, 'category' );
 
         // ❌ D1: die() in CLI context.
         if ( ! $result ) {

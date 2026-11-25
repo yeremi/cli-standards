@@ -19,7 +19,7 @@ Detection fixes in this release can report violations in code that passed with 1
 - Closures and arrow functions passed directly to `WP_CLI::add_command()` are now commands: the Documentation, Safety, Output, `BatchSizeFlag` and Arguments sniffs check them (#19)
 - Command keywords are matched against the name users type: a `@subcommand` annotation or the name registered with `WP_CLI::add_command()` in the same file can make a command destructive, state-changing, listing or bulk (#15)
 
-Reports are removed for constructors, registration bootstraps, private/protected helpers (#2), loops over fixed collections or message-only loops (#4), and methods whose name only contains a keyword as part of another word, such as `dropdown_stats` ("drop") or `widget_getter` ("get") (#15), commands that confirm, handle dry-run, format output or read the batch size in a same-class helper (#16), and commands documented through the `synopsis`/`longdesc` arguments of `WP_CLI::add_command()` instead of a docblock (#19).
+Reports are removed for constructors, registration bootstraps, private/protected helpers (#2), loops over fixed collections or message-only loops (#4), and methods whose name only contains a keyword as part of another word, such as `dropdown_stats` ("drop") or `widget_getter` ("get") (#15), commands that confirm, handle dry-run, format output or read the batch size in a same-class helper (#16), and commands documented through the `synopsis`/`longdesc` arguments of `WP_CLI::add_command()` instead of a docblock (#19), and `WpErrorHandling` reports on functions that cannot return `WP_Error` in that call (#25).
 
 ### Added
 
@@ -32,6 +32,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - `@cli-standards confirm-delegated|dry-run-delegated|format-delegated <reason>` docblock tags to declare delegation to other classes (#16)
 - Delegation fixtures (#16)
 - Registration fixtures (#19)
+- ErrorHandling fixtures (#25)
 - Scalability fixtures, including pass cases (#4)
 
 ### Changed
@@ -49,6 +50,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - `$assocArgs` (camelCase) and other names for the second handler parameter are recognized as WP-CLI assoc args by the Documentation, `FlagNaming` and `FlagExtraction` sniffs (#3)
 - `ProgressBar` looks for `make_progress_bar()` only inside the enclosing function, so a progress bar in a neighboring method no longer hides a missing one (#5)
 - Docblocks followed by PHP 8 attributes (`#[...]`) are now found, removing false `MissingDocblock` errors (#6)
+- `WpErrorHandling` no longer reports functions that never return `WP_Error` (`wp_delete_post()`, `wp_delete_user()`, `wp_create_category()`, `wp_upload_bits()`, `wp_handle_upload()`), and only reports `wp_insert_post()`, `wp_update_post()` and `wp_insert_attachment()` when their `$wp_error` argument is passed and not `false` (#25)
 
 ## [1.0.0] - 2026-04-23
 

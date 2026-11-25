@@ -27,6 +27,18 @@ use PHP_CodeSniffer\Files\File;
 class WpErrorHandlingSniff implements Sniff
 {
     /**
+     * Functions that only return WP_Error when their $wp_error argument is
+     * true: name => zero-based position of that argument.
+     *
+     * @var array<string, int>
+     */
+    private const CONDITIONAL_WP_ERROR = [
+        'wp_insert_post'       => 1,
+        'wp_update_post'       => 1,
+        'wp_insert_attachment' => 3,
+    ];
+
+    /**
      * Whether the current file is a WP-CLI context.
      *
      * @var bool|null
@@ -34,28 +46,28 @@ class WpErrorHandlingSniff implements Sniff
     private $cliContextCache = [];
 
     /**
-     * WordPress functions known to return WP_Error on failure.
+     * WordPress functions documented to return WP_Error on failure.
+     *
+     * Functions that never return WP_Error are deliberately absent, e.g.
+     * wp_delete_post() (WP_Post|false|null), wp_delete_user() (bool),
+     * wp_create_category() (int), wp_upload_bits() and wp_handle_upload()
+     * (arrays with an "error" key).
      *
      * @var array<string>
      */
     private $wpErrorFunctions = [
         'wp_insert_post',
         'wp_update_post',
-        'wp_delete_post',
         'wp_insert_term',
         'wp_update_term',
         'wp_delete_term',
         'wp_insert_user',
         'wp_update_user',
-        'wp_delete_user',
         'wp_remote_get',
         'wp_remote_post',
         'wp_remote_request',
-        'wp_upload_bits',
-        'wp_handle_upload',
         'wp_insert_attachment',
         'wp_set_object_terms',
-        'wp_create_category',
         'media_handle_upload',
         'media_handle_sideload',
         'wp_crop_image',
@@ -121,6 +133,15 @@ class WpErrorHandlingSniff implements Sniff
             }
         }
 
+        // Some functions only return WP_Error when asked to ($wp_error = true).
+        $condition = '';
+        if (isset(self::CONDITIONAL_WP_ERROR[$functionName])) {
+            if (!$this->requestsWpError($phpcsFile, $next, self::CONDITIONAL_WP_ERROR[$functionName])) {
+                return;
+            }
+            $condition = ' (called with $wp_error = true)';
+        }
+
         // Find the variable that captures the return value.
         // Pattern: $result = wp_insert_post( ... )
         $assignmentVar = $this->findAssignmentVariable($phpcsFile, $stackPtr);
@@ -128,10 +149,10 @@ class WpErrorHandlingSniff implements Sniff
         if ($assignmentVar === false) {
             // Return value not captured at all — flag it.
             $phpcsFile->addWarning(
-                'Return value of %s() is not captured. This function can return WP_Error — check with is_wp_error() before proceeding.',
+                'Return value of %s()%s is not captured. This function can return WP_Error — check with is_wp_error() before proceeding.',
                 $stackPtr,
                 'UncapturedWpError',
-                [$tokens[$stackPtr]['content']]
+                [$tokens[$stackPtr]['content'], $condition]
             );
             return;
         }
@@ -142,10 +163,10 @@ class WpErrorHandlingSniff implements Sniff
 
         if (!$this->hasWpErrorCheck($phpcsFile, $stackPtr, $endLimit, $varName)) {
             $phpcsFile->addWarning(
-                '%s() returns WP_Error on failure, but %s is not checked with is_wp_error() within the next %d lines. Unchecked WP_Error objects cause silent failures in CLI commands.',
+                '%s()%s returns WP_Error on failure, but %s is not checked with is_wp_error() within the next %d lines. Unchecked WP_Error objects cause silent failures in CLI commands.',
                 $stackPtr,
                 'UncheckedWpError',
-                [$tokens[$stackPtr]['content'], $varName, 20]
+                [$tokens[$stackPtr]['content'], $condition, $varName, 20]
             );
         }
     }
@@ -240,6 +261,76 @@ class WpErrorHandlingSniff implements Sniff
             if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
                 return true;
             }
+        }
+
+        return false;
+    }
+    /**
+     * Whether a call passes a $wp_error argument that may be true.
+     *
+     * The argument counts when it is present at the given position (or as
+     * the named argument "wp_error:") and is not the literal false.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $open      Position of the call's opening parenthesis.
+     * @param int  $position  Zero-based position of the $wp_error argument.
+     *
+     * @return bool
+     */
+    private function requestsWpError(File $phpcsFile, int $open, int $position): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        if (!isset($tokens[$open]['parenthesis_closer'])) {
+            return false;
+        }
+
+        $close    = $tokens[$open]['parenthesis_closer'];
+        $index    = 0;
+        $argStart = $open + 1;
+
+        for ($i = $argStart; $i <= $close; $i++) {
+            $code = $tokens[$i]['code'];
+
+            if ($i < $close && $code === T_OPEN_PARENTHESIS && isset($tokens[$i]['parenthesis_closer'])) {
+                $i = $tokens[$i]['parenthesis_closer'];
+                continue;
+            }
+
+            if ($i < $close && isset($tokens[$i]['bracket_closer'])
+                && in_array($code, [T_OPEN_SHORT_ARRAY, T_OPEN_SQUARE_BRACKET, T_OPEN_CURLY_BRACKET], true)
+            ) {
+                $i = $tokens[$i]['bracket_closer'];
+                continue;
+            }
+
+            if ($i !== $close && $code !== T_COMMA) {
+                continue;
+            }
+
+            $first = $phpcsFile->findNext(T_WHITESPACE, $argStart, $i, true);
+            if ($first !== false) {
+                $valueStart = $first;
+                $isNamed    = false;
+
+                if ($tokens[$first]['code'] === T_PARAM_NAME) {
+                    $isNamed    = true;
+                    $colon      = $phpcsFile->findNext(T_WHITESPACE, ($first + 1), $i, true);
+                    $valueStart = ($colon !== false) ? $phpcsFile->findNext(T_WHITESPACE, ($colon + 1), $i, true) : false;
+                }
+
+                $matches = $isNamed
+                    ? (strtolower($tokens[$first]['content']) === 'wp_error')
+                    : ($index === $position);
+
+                if ($matches) {
+                    $last = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), $argStart - 1, true);
+
+                    return !($valueStart !== false && $valueStart === $last && $tokens[$valueStart]['code'] === T_FALSE);
+                }
+            }
+
+            $index++;
+            $argStart = $i + 1;
         }
 
         return false;
