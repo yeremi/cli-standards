@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="CustomDestructiveFixture">
+    <description>Fixture ruleset: ConfirmOnDelete with a project-specific destructive API list.</description>
+
+    <rule ref="CLIStandards.Safety.ConfirmOnDelete">
+        <properties>
+            <property name="destructiveFunctions" type="array">
+                <element value="acme_wipe_tenant"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

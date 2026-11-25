@@ -68,17 +68,8 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
             return;
         }
 
-        $functionName = strtolower($tokens[$nameToken]['content']);
-
-        $isBulk = false;
-        foreach ($this->bulkKeywords as $keyword) {
-            if (strpos($functionName, $keyword) !== false) {
-                $isBulk = true;
-                break;
-            }
-        }
-
-        if (!$isBulk) {
+        // Bulk command: a bulk keyword is a whole word of the command name.
+        if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->bulkKeywords) === null) {
             return;
         }
 

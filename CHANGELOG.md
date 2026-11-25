@@ -15,8 +15,10 @@ Detection fixes in this release can report violations in code that passed with 1
 - `ProgressBar` no longer counts a progress bar created in a neighboring method (#5)
 - A docblock placed before a PHP 8 attribute is now read: its `MissingDocblock` error becomes `MissingOptionsSection`, `MissingExamplesSection` or `MissingSince` when those parts are missing (#6)
 - `## OPTIONS`, `## EXAMPLES` and `## AVAILABLE FIELDS` only count as headings on their own line, not when mentioned in prose (#13)
+- `ConfirmOnDelete` and `DryRunSupport` also report commands that call content-destroying APIs (`wp_delete_post()`, `wp_delete_user()`, `$wpdb->delete()`, `$wpdb->query()` with `DELETE`/`TRUNCATE`/`DROP`, ...) whatever their name (#15)
+- Command keywords are matched against the name users type: a `@subcommand` annotation or the name registered with `WP_CLI::add_command()` in the same file can make a command destructive, state-changing, listing or bulk (#15)
 
-Reports are removed for constructors, registration bootstraps, private/protected helpers (#2), and loops over fixed collections or message-only loops (#4).
+Reports are removed for constructors, registration bootstraps, private/protected helpers (#2), loops over fixed collections or message-only loops (#4), and methods whose name only contains a keyword as part of another word, such as `dropdown_stats` ("drop") or `widget_getter` ("get") (#15).
 
 ### Added
 
@@ -24,11 +26,14 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Documentation fixtures, including pass cases (#2)
 - Arguments fixtures (#3)
 - `unboundedSources` ruleset property on `ProgressBar` (#4)
+- `destructiveFunctions` ruleset property on `ConfirmOnDelete` and `DryRunSupport` (#15)
+- Classification fixtures (#15)
 - Scalability fixtures, including pass cases (#4)
 
 ### Changed
 
 - Command detection is shared by all command-aware sniffs (`DocblockOptions`, `DocblockExamples`, `SinceAnnotation`, `ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields`, `BatchSizeFlag`). Only public, non-magic methods (plus `__invoke`) that do more than register commands are checked, which removes false positives on constructors, registration bootstraps and private helpers (#2)
+- `ConfirmOnDelete`, `DryRunSupport`, `FormatSupport`, `AvailableFields` and `BatchSizeFlag` match keywords as whole words of the command name instead of substrings of the method name (#15)
 - `ProgressBar` skips loops over array literals and constants, and message-only loops (`error`/`warning`/`line`) unless they iterate an unbounded source such as `get_posts()` (#4)
 - Fixture suite asserts message counts per sniff source, not only totals (#1)
 
