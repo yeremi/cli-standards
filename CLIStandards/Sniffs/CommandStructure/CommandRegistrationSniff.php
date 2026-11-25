@@ -19,6 +19,7 @@
 namespace CLIStandards\Sniffs\CommandStructure;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
 
 class CommandRegistrationSniff extends AbstractCommandSniff
@@ -138,7 +139,7 @@ class CommandRegistrationSniff extends AbstractCommandSniff
         }
 
         $className = $phpcsFile->findPrevious(T_WHITESPACE, ($doubleColon - 1), null, true);
-        if ($className === false || $tokens[$className]['content'] !== 'WP_CLI') {
+        if ($className === false || !Names::isWpCliClass($tokens[$className])) {
             return false;
         }
 

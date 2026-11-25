@@ -2,16 +2,18 @@
 
 PHPCS sniffs for CLI command design quality, currently focused on WP-CLI command code.
 
-This package publishes the `CLIStandards` coding standard as a Packagist-ready Composer package. It enforces 18 checks derived from the CLI Standards model:
+This package publishes the `CLIStandards` coding standard as a Packagist-ready Composer package. It enforces 19 checks derived from the CLI Standards model:
 
 - 8 blocking checks reported as errors
-- 10 advisory checks reported as warnings
+- 11 advisory checks reported as warnings
 
 ## Installation
 
 ```bash
 composer require --dev yeremi/cli-standards
 ```
+
+Requires PHP 7.4 or later and PHP_CodeSniffer 3.13.6+ or 4.x. [PHPCSUtils](https://phpcsutils.com/) is installed alongside as a dependency.
 
 The Composer installer plugin registers the standards automatically. After installation:
 

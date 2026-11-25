@@ -256,6 +256,21 @@ $cases = [
             'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 3,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Names/fail.php',
+        'errors' => 2,
+        'warnings' => 4,
+        'sources' => [
+            'CLIStandards.Documentation.DocumentedFlags.UndocumentedFlag' => 1,
+            'CLIStandards.ErrorHandling.ErrorSeverity.WpDieInCli' => 1,
+            'CLIStandards.ErrorHandling.WpErrorHandling.UncheckedWpError' => 1,
+            'CLIStandards.Output.FormatSupport.MissingFormatSupport' => 1,
+            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 1,
+            'CLIStandards.Scalability.ProgressBar.MissingProgressBar' => 1,
+        ],
+    ],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Names/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classes/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/CommandStructure/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Confirm/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
@@ -349,7 +364,7 @@ foreach ($cases as $case) {
     }
 
     $command = escapeshellarg($phpcs)
-        . ' --standard=' . escapeshellarg($standard) . ' --report=json '
+        . ' -q --standard=' . escapeshellarg($standard) . ' --report=json '
         . escapeshellarg($fixturePath)
         . ' 2>&1';
 
@@ -393,14 +408,15 @@ foreach ($cases as $case) {
         'warnings' => (int) $report['totals']['warnings'],
     ];
 
-    // PHPCS exits with 1 when it reports, or 2 when some reports are fixable.
+    // With reports, PHPCS 3 exits with 1 (or 2 when some are fixable);
+    // PHPCS 4 with 1 (fixable), 2 (not fixable) or 3 (both).
     $expectedExitCode = ($case['errors'] > 0 || $case['warnings'] > 0) ? 1 : 0;
     $label = $case['standard'] . ' :: ' . $fixture;
 
     if ($sourceDiff !== []
         || $actual['errors'] !== $case['errors']
         || $actual['warnings'] !== $case['warnings']
-        || !($exitCode === $expectedExitCode || ($expectedExitCode === 1 && $exitCode === 2))
+        || !($exitCode === $expectedExitCode || ($expectedExitCode === 1 && in_array($exitCode, [2, 3], true)))
     ) {
         $hasFailure = true;
         fwrite(

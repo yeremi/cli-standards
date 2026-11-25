@@ -21,8 +21,9 @@
 
 namespace CLIStandards\Sniffs\ErrorHandling;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
+use PHP_CodeSniffer\Sniffs\Sniff;
 
 class WpErrorHandlingSniff implements Sniff
 {
@@ -87,7 +88,8 @@ class WpErrorHandlingSniff implements Sniff
      */
     public function register(): array
     {
-        return [T_STRING];
+        // Plain, fully qualified (\wp_insert_post) and namespaced names.
+        return array_values(Names::nameTokens());
     }
 
     /**
@@ -110,7 +112,7 @@ class WpErrorHandlingSniff implements Sniff
         }
 
         $tokens = $phpcsFile->getTokens();
-        $functionName = strtolower($tokens[$stackPtr]['content']);
+        $functionName = strtolower((string) Names::lastSegment($tokens[$stackPtr]));
 
         // Check if this is a WordPress function that returns WP_Error.
         if (!in_array($functionName, $this->wpErrorFunctions, true)) {
@@ -152,7 +154,7 @@ class WpErrorHandlingSniff implements Sniff
                 'Return value of %s()%s is not captured. This function can return WP_Error — check with is_wp_error() before proceeding.',
                 $stackPtr,
                 'UncapturedWpError',
-                [$tokens[$stackPtr]['content'], $condition]
+                [$functionName, $condition]
             );
             return;
         }
@@ -166,7 +168,7 @@ class WpErrorHandlingSniff implements Sniff
                 '%s()%s returns WP_Error on failure, but %s is not checked with is_wp_error() within the next %d lines. Unchecked WP_Error objects cause silent failures in CLI commands.',
                 $stackPtr,
                 'UncheckedWpError',
-                [$tokens[$stackPtr]['content'], $condition, $varName, 20]
+                [$functionName, $condition, $varName, 20]
             );
         }
     }
@@ -185,8 +187,9 @@ class WpErrorHandlingSniff implements Sniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        // Look backward past whitespace for '='.
-        $equals = $phpcsFile->findPrevious(T_WHITESPACE, ($stackPtr - 1), max(0, $stackPtr - 10), true);
+        // Look backward past whitespace, and past a namespace prefix split
+        // into T_STRING/T_NS_SEPARATOR tokens by PHPCS 3, for '='.
+        $equals = $phpcsFile->findPrevious([T_WHITESPACE, T_NS_SEPARATOR, T_STRING], ($stackPtr - 1), max(0, $stackPtr - 10), true);
         if ($equals === false || $tokens[$equals]['code'] !== T_EQUAL) {
             return false;
         }
@@ -215,11 +218,7 @@ class WpErrorHandlingSniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = $start; $i <= $end; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING) {
-                continue;
-            }
-
-            if ($tokens[$i]['content'] !== 'is_wp_error') {
+            if (Names::lastSegment($tokens[$i]) !== 'is_wp_error') {
                 continue;
             }
 
@@ -253,7 +252,7 @@ class WpErrorHandlingSniff implements Sniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 

@@ -1,0 +1,67 @@
+<?php
+/**
+ * Test fixture: qualified and namespaced names — should FAIL.
+ *
+ * PHPCS 4 tokenizes `\WP_CLI` and `WP_CLI\Utils\format_items` as single
+ * name tokens; the results must match PHPCS 3.
+ */
+
+namespace Acme\Cli;
+
+use WP_CLI\Utils;
+
+class Names_Fail_Command {
+
+    /**
+     * Purge records.
+     *
+     * ## OPTIONS
+     *
+     * [--dry-run]
+     * : Preview only.
+     *
+     * ## EXAMPLES
+     *
+     *     wp acme purge --dry-run
+     *
+     * @since 1.0.0
+     */
+    public function purge( $args, $assoc_args ) {
+        // ❌ E2: fully qualified \WP_CLI::confirm() without the assoc args.
+        \WP_CLI::confirm( 'Purge all records?' );
+
+        if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'dry-run', false ) ) {
+            return;
+        }
+
+        // ⚠ UndocumentedFlag: read through a relative namespaced call.
+        $force = Utils\get_flag_value( $assoc_args, 'force', false );
+
+        // ⚠ D3: fully qualified call, result not checked.
+        $term = \wp_insert_term( 'Archive', 'category' );
+
+        if ( ! $force ) {
+            // ❌ D1: fully qualified \wp_die().
+            \wp_die( 'Refusing without --force.' );
+        }
+
+        \WP_CLI::success( "Purged into {$term['term_id']}." );
+    }
+
+    /**
+     * List posts.
+     *
+     * ## EXAMPLES
+     *
+     *     wp acme list
+     *
+     * @since 1.0.0
+     */
+    public function list_posts( $args, $assoc_args ) {
+        // ⚠ F1: fully qualified unbounded source, no progress bar.
+        // ⚠ C3: listing command without format_items().
+        foreach ( \get_posts( [ 'numberposts' => 100 ] ) as $post ) {
+            \WP_CLI::line( $post->post_title );
+        }
+    }
+}

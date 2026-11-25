@@ -19,6 +19,7 @@
 namespace CLIStandards\Sniffs\Arguments;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
 
 class FlagExtractionSniff extends AbstractCommandSniff
@@ -110,7 +111,7 @@ class FlagExtractionSniff extends AbstractCommandSniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 

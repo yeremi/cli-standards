@@ -25,6 +25,7 @@
 namespace CLIStandards\Sniffs\Scalability;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
 use PHP_CodeSniffer\Files\File;
 
 class ProgressBarSniff extends AbstractCommandSniff
@@ -66,7 +67,17 @@ class ProgressBarSniff extends AbstractCommandSniff
      *
      * @var array<int|string>
      */
-    private const CONSTANT_TOKENS = [T_STRING, T_SELF, T_STATIC, T_PARENT, T_DOUBLE_COLON, T_NS_SEPARATOR];
+    private const CONSTANT_TOKENS = [
+        T_STRING,
+        T_NAME_QUALIFIED,
+        T_NAME_FULLY_QUALIFIED,
+        T_NAME_RELATIVE,
+        T_SELF,
+        T_STATIC,
+        T_PARENT,
+        T_DOUBLE_COLON,
+        T_NS_SEPARATOR,
+    ];
 
     /**
      * How far back to look for make_progress_bar() when a loop is not inside
@@ -162,7 +173,7 @@ class ProgressBarSniff extends AbstractCommandSniff
         }
 
         for ($i = $searchStart; $i < $loopEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'make_progress_bar') {
+            if (Names::lastSegment($tokens[$i]) === 'make_progress_bar') {
                 return true;
             }
         }
@@ -185,7 +196,7 @@ class ProgressBarSniff extends AbstractCommandSniff
         $methods = [];
 
         for ($i = $start; $i < $end; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 
@@ -304,7 +315,7 @@ class ProgressBarSniff extends AbstractCommandSniff
         $sources = array_map('strtolower', (array) $this->unboundedSources);
 
         for ($i = $start; $i <= $end; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && in_array(strtolower($tokens[$i]['content']), $sources, true)) {
+            if (in_array(strtolower((string) Names::lastSegment($tokens[$i])), $sources, true)) {
                 return true;
             }
         }

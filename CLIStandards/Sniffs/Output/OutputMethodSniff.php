@@ -20,8 +20,9 @@
 namespace CLIStandards\Sniffs\Output;
 
 use CLIStandards\Helpers\AbstractCommandSniff;
+use CLIStandards\Helpers\Names;
+use PHPCSUtils\BackCompat\BCTokens;
 use PHP_CodeSniffer\Files\File;
-use PHP_CodeSniffer\Util\Tokens;
 
 class OutputMethodSniff extends AbstractCommandSniff
 {
@@ -136,7 +137,7 @@ class OutputMethodSniff extends AbstractCommandSniff
         $tokens = $phpcsFile->getTokens();
 
         // The statement starts with echo/print.
-        $prev = $phpcsFile->findPrevious(Tokens::$emptyTokens, ($stackPtr - 1), null, true);
+        $prev = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($stackPtr - 1), null, true);
         $starts = [T_SEMICOLON, T_OPEN_CURLY_BRACKET, T_CLOSE_CURLY_BRACKET, T_OPEN_TAG, T_ELSE];
         if ($prev === false
             || (!in_array($tokens[$prev]['code'], $starts, true)
@@ -170,19 +171,19 @@ class OutputMethodSniff extends AbstractCommandSniff
             return null;
         }
 
-        $last = $phpcsFile->findPrevious(Tokens::$emptyTokens, ($i - 1), $stackPtr, true);
+        $last = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($i - 1), $stackPtr, true);
         if ($last === false || $last === $stackPtr) {
             return null;
         }
 
         // `... . PHP_EOL`: drop the concatenation.
         if ($tokens[$last]['code'] === T_STRING && $tokens[$last]['content'] === 'PHP_EOL') {
-            $dot = $phpcsFile->findPrevious(Tokens::$emptyTokens, ($last - 1), $stackPtr, true);
+            $dot = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($last - 1), $stackPtr, true);
             if ($dot === false || $tokens[$dot]['code'] !== T_STRING_CONCAT) {
                 return null;
             }
 
-            $before = $phpcsFile->findPrevious(Tokens::$emptyTokens, ($dot - 1), $stackPtr, true);
+            $before = $phpcsFile->findPrevious(BCTokens::emptyTokens(), ($dot - 1), $stackPtr, true);
             if ($before === false || $before === $stackPtr) {
                 return null;
             }
@@ -223,7 +224,7 @@ class OutputMethodSniff extends AbstractCommandSniff
         $tokens = $phpcsFile->getTokens();
 
         for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
-            if ($tokens[$i]['code'] !== T_STRING || $tokens[$i]['content'] !== 'WP_CLI') {
+            if (!Names::isWpCliClass($tokens[$i])) {
                 continue;
             }
 
