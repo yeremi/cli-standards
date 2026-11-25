@@ -10,6 +10,11 @@ class Docs_Fail_Command {
         WP_CLI::line( '1.0.0' );
     }
 
+    // ❌ G1: camelCase $assocArgs is still a command handler, even without WP_CLI calls.
+    public function config( array $args, array $assocArgs ) {
+        return $assocArgs;
+    }
+
     // ❌ G1: __invoke is the default subcommand and needs a docblock.
     public function __invoke( $args, $assoc_args ) {
         WP_CLI::success( 'Done.' );

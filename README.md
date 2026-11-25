@@ -108,7 +108,9 @@ Sniffs that check command methods (documentation, safety, output format, batch s
 - it is `public` (or a plain function outside a class);
 - it is not a magic method, except `__invoke`;
 - it does more than register commands (a method whose only WP-CLI calls are `WP_CLI::add_command()` / `add_hook()` is a bootstrap);
-- it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes `$assoc_args` as its second parameter.
+- it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes the assoc args as its second parameter (`$assoc_args` or `$assocArgs`).
+
+Flag sniffs recognize the assoc args as `$assoc_args`, `$assocArgs`, or the second parameter of a command handler whatever its name.
 
 ## Configuration
 
