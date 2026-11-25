@@ -14,6 +14,10 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - DocumentedFlags fixtures (#17)
 
+### Fixed
+
+- Registration bootstraps that call `WP_CLI::add_command()` through a same-class helper (and take no assoc args) are no longer treated as commands (#45)
+
 ## [1.1.0] - 2026-11-25
 
 ### May add reports
