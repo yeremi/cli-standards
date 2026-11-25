@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<documentation title="Confirm On Delete">
+    <standard>
+    <![CDATA[
+    Commands that delete or irreversibly change data must ask WP_CLI::confirm() first. A command is destructive when its name (the @subcommand, the registered name, or the method name) contains a whole word such as delete, remove, flush, truncate, reset, purge, destroy, drop, clear, wipe, uninstall or erase, or when it calls a content-destroying API (wp_delete_post(), $wpdb->delete(), a $wpdb->query() with DELETE/TRUNCATE/DROP, ...). Same-class helpers are followed; declare a confirmation in another class with "@cli-standards confirm-delegated <reason>".
+    
+    Requirement: E1 (MUST, error).
+    Error codes: MissingConfirm.
+    Properties: destructiveFunctions (APIs that make a command destructive; '->name' means a $wpdb method), ignoreMethods, ignoreClasses.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Confirmation before deleting.">
+        <![CDATA[
+public function purge( $args, $assoc_args ) {
+    <em>WP_CLI::confirm( 'Delete all logs?', $assoc_args );</em>
+    acme_delete_logs();
+}
+    ]]>
+        </code>
+        <code title="Invalid: Deletes without asking.">
+        <![CDATA[
+public function purge( $args, $assoc_args ) {
+    <em>acme_delete_logs();</em>
+}
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<documentation title="Command Registration">
+    <standard>
+    <![CDATA[
+    Register commands with WP_CLI::add_command() under a vendor namespace: wp <vendor> <noun> [<verb>]. A bare name such as "list" collides with other plugins and with WP-CLI core commands. A class registered as a single word (wp acme) is a command group, which is allowed unless the word is a WP-CLI core command such as user or cache. Command name segments must be lowercase.
+    
+    Requirement: A1 (MUST, error).
+    Error codes: MissingNamespace, UppercaseSegment.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Namespaced command name.">
+        <![CDATA[
+WP_CLI::add_command( <em>'acme cache purge'</em>, 'acme_purge_cache' );
+    ]]>
+        </code>
+        <code title="Invalid: Bare or core command name.">
+        <![CDATA[
+WP_CLI::add_command( <em>'purge'</em>, 'acme_purge_cache' );
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<documentation title="Docblock Examples">
+    <standard>
+    <![CDATA[
+    Every command docblock needs an ## EXAMPLES section with at least one realistic invocation; "wp help" shows it to users. An ## EXAMPLES heading in the longdesc passed to WP_CLI::add_command() counts as well.
+    
+    Requirement: G2 (MUST, error).
+    Error codes: MissingExamplesSection.
+    Properties: ignoreMethods (method names that are never commands), ignoreClasses (classes that are never command classes).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Example given.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ *
+ * <em>## EXAMPLES</em>
+ *
+ *     wp acme reindex --batch-size=200
+ */
+    ]]>
+        </code>
+        <code title="Invalid: No examples.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ */
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

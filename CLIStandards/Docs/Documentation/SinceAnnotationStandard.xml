@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<documentation title="Since Annotation">
+    <standard>
+    <![CDATA[
+    Command docblocks should carry a @since tag with the version that introduced the command, to support deprecations and changelogs.
+    
+    Requirement: G4 (SHOULD, warning).
+    Error codes: MissingSince.
+    Properties: ignoreMethods (method names that are never commands), ignoreClasses (classes that are never command classes).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Version recorded.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ *
+ * <em>@since 2.3.0</em>
+ */
+    ]]>
+        </code>
+        <code title="Invalid: No version.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ */
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

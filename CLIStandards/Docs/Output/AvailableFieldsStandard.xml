@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<documentation title="Available Fields">
+    <standard>
+    <![CDATA[
+    Listing commands that call format_items() should document their columns in an ## AVAILABLE FIELDS section, so users know what --fields accepts.
+    
+    Requirement: C4 / G3 (SHOULD, warning).
+    Error codes: MissingAvailableFields.
+    Properties: ignoreMethods (method names that are never commands), ignoreClasses (classes that are never command classes).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Fields documented.">
+        <![CDATA[
+/**
+ * List jobs.
+ *
+ * <em>## AVAILABLE FIELDS</em>
+ *
+ * * id
+ * * status
+ */
+    ]]>
+        </code>
+        <code title="Invalid: No fields section.">
+        <![CDATA[
+/**
+ * List jobs.
+ *
+ * ## EXAMPLES
+ *
+ *     wp acme job list
+ */
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<documentation title="Progress Bar">
+    <standard>
+    <![CDATA[
+    Loops in a command that call WP-CLI for each item should show WP_CLI\Utils\make_progress_bar() in the same function. Loops over array literals and constants, and loops that only print messages (error, warning, line), are skipped unless they iterate an unbounded source such as get_posts().
+    
+    Requirement: F1 (SHOULD, warning).
+    Error codes: MissingProgressBar.
+    Properties: unboundedSources (functions and classes whose results are unbounded), ignoreMethods, ignoreClasses.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Progress reported.">
+        <![CDATA[
+<em>$progress = WP_CLI\Utils\make_progress_bar( 'Reindexing', count( $ids ) );</em>
+foreach ( $ids as $id ) {
+    acme_reindex( $id );
+    $progress->tick();
+}
+$progress->finish();
+    ]]>
+        </code>
+        <code title="Invalid: Silent loop.">
+        <![CDATA[
+foreach ( $ids as $id ) {
+    acme_reindex( $id );
+    <em>WP_CLI::debug( "Reindexed {$id}" );</em>
+}
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

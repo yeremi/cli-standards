@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<documentation title="Stdout / Stderr Separation">
+    <standard>
+    <![CDATA[
+    A command that prints structured data with format_items() should not also write status messages with WP_CLI::log(), which goes to stdout and corrupts the data for pipes (| jq, | grep). Use WP_CLI::debug() or WP_CLI::warning() (stderr) for status messages.
+    
+    Requirement: C2 (SHOULD, warning).
+    Error codes: MixedOutput.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Status on stderr, data on stdout.">
+        <![CDATA[
+<em>WP_CLI::debug( 'Fetching items...' );</em>
+WP_CLI\Utils\format_items( $format, $items, $fields );
+    ]]>
+        </code>
+        <code title="Invalid: Status mixed into stdout.">
+        <![CDATA[
+<em>WP_CLI::log( 'Fetching items...' );</em>
+WP_CLI\Utils\format_items( $format, $items, $fields );
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

@@ -37,7 +37,9 @@
     "scripts": {
         "test": "php scripts/verify-fixtures.php",
         "test:fixtures": "@test",
-        "test:fixtures:verbose": "php scripts/verify-fixtures.php --verbose"
+        "test:fixtures:verbose": "php scripts/verify-fixtures.php --verbose",
+        "test:docs": "php scripts/generate-docs.php --check",
+        "docs": "php scripts/generate-docs.php"
     },
     "scripts-descriptions": {
         "test": "Run the fixture-based regression suite for the CLIStandards standard.",

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<documentation title="Batch Processing">
+    <standard>
+    <![CDATA[
+    Do not load unbounded result sets ('numberposts' => -1, 'posts_per_page' => -1, 'nopaging' => true) in CLI code. Large sites run out of memory; process items in pages instead.
+    
+    Requirement: F2 (MUST in the design model; warning here because detection is heuristic).
+    Error codes: UnboundedQuery.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Paged query.">
+        <![CDATA[
+$ids = get_posts( [ <em>'posts_per_page' => $batch_size, 'paged' => $paged</em>, 'fields' => 'ids' ] );
+    ]]>
+        </code>
+        <code title="Invalid: Everything at once.">
+        <![CDATA[
+$ids = get_posts( [ <em>'posts_per_page' => -1</em>, 'fields' => 'ids' ] );
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

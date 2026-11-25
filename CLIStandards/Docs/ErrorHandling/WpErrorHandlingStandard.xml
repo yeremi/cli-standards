@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<documentation title="WP_Error Handling">
+    <standard>
+    <![CDATA[
+    Check the result of WordPress functions that can return WP_Error with is_wp_error() before using it. Functions that never return WP_Error are not reported, and wp_insert_post(), wp_update_post() and wp_insert_attachment() only when their $wp_error argument is passed and not false.
+    
+    Requirement: D3 (MUST in the design model; warning here because detection is heuristic).
+    Error codes: UncheckedWpError (result stored, never checked), UncapturedWpError (result discarded).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Result checked.">
+        <![CDATA[
+$term = wp_insert_term( 'News', 'category' );
+<em>if ( is_wp_error( $term ) ) {</em>
+    WP_CLI::error( $term );
+}
+    ]]>
+        </code>
+        <code title="Invalid: Result used unchecked.">
+        <![CDATA[
+$term = wp_insert_term( 'News', 'category' );
+<em>WP_CLI::success( "Created {$term['term_id']}" );</em>
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>
