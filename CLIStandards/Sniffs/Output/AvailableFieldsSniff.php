@@ -103,7 +103,7 @@ class AvailableFieldsSniff extends AbstractCommandSniff
 
         $docContent = $this->getDocblockContent($phpcsFile, $docblock);
 
-        if (stripos($docContent, '## AVAILABLE FIELDS') === false) {
+        if (!$this->docblockHasSection($docContent, 'AVAILABLE FIELDS')) {
             $phpcsFile->addWarning(
                 'Listing command "%s" uses format_items() but lacks a "## AVAILABLE FIELDS" section in its docblock. Document which fields are available and which are shown by default.',
                 $nameToken,

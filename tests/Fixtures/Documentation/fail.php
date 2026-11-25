@@ -35,6 +35,40 @@ class Docs_Fail_Command {
         WP_CLI::success( 'Healthy.' );
     }
 
+    /**
+     * Refresh the cache.
+     *
+     * Flags are described under ## OPTIONS in the handbook; see ## EXAMPLES there too.
+     *
+     * @since 1.0.0
+     */
+    public function refresh( $args, $assoc_args ) {
+        // ❌ G1 + G2: sections are only mentioned in prose, not used as headings.
+        WP_CLI::success( 'Refreshed.' );
+    }
+
+    /**
+     * List registered items.
+     *
+     * Fields are listed under ## AVAILABLE FIELDS in the README.
+     *
+     * ## OPTIONS
+     *
+     * [--format=<format>]
+     * : Output format.
+     *
+     * ## EXAMPLES
+     *
+     *     wp myplugin docs list_items --format=json
+     *
+     * @since 1.0.0
+     */
+    public function list_items( $args, $assoc_args ) {
+        // ⚠ C4: AVAILABLE FIELDS is only mentioned in prose.
+        $format = WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
+        WP_CLI\Utils\format_items( $format, [], [ 'id', 'name' ] );
+    }
+
     // ❌ G1: a method that registers AND runs WP-CLI code is still a command.
     public function boot( $args, $assoc_args ) {
         WP_CLI::add_command( 'myplugin extra', self::class );

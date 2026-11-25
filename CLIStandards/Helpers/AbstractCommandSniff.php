@@ -242,6 +242,31 @@ abstract class AbstractCommandSniff implements Sniff
     }
 
     /**
+     * Whether docblock text contains a WP-CLI section heading, e.g. "## OPTIONS".
+     *
+     * The heading must stand on its own line (after the optional leading "*");
+     * a mention of the section inside prose does not count. Case-insensitive.
+     *
+     * @param string $docContent Full docblock text.
+     * @param string $section    Section name without "##", e.g. "OPTIONS".
+     *
+     * @return bool
+     */
+    protected function docblockHasSection(string $docContent, string $section): bool
+    {
+        $name = implode('[ \t]+', array_map(
+            static function (string $word): string {
+                return preg_quote($word, '/');
+            },
+            preg_split('/\s+/', trim($section))
+        ));
+
+        $pattern = '/^[ \t]*(?:\/\*\*)?[ \t]*\*?[ \t]*##[ \t]+' . $name . '[ \t]*\r?$/mi';
+
+        return preg_match($pattern, $docContent) === 1;
+    }
+
+    /**
      * Find the innermost function, closure or arrow function around a token.
      *
      * @param File $phpcsFile The file being scanned.

@@ -26,14 +26,14 @@ $cases = [
     [
         'standard' => 'CLIStandards',
         'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
-        'errors' => 9,
+        'errors' => 11,
         'warnings' => 7,
         'sources' => [
             'CLIStandards.Arguments.FlagExtraction.DirectAccess' => 1,
             'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 1,
             'CLIStandards.CommandStructure.CommandRegistration.MissingNamespace' => 1,
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
-            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 1,
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
+            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 2,
             'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 2,
             'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 2,
             'CLIStandards.ErrorHandling.WpErrorHandling.UncheckedWpError' => 1,
@@ -85,12 +85,14 @@ $cases = [
     [
         'standard' => 'CLIStandards',
         'fixture' => 'tests/Fixtures/Documentation/fail.php',
-        'errors' => 5,
-        'warnings' => 1,
+        'errors' => 7,
+        'warnings' => 2,
         'sources' => [
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
+            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 1,
             'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 1,
+            'CLIStandards.Output.AvailableFields.MissingAvailableFields' => 1,
         ],
     ],
     [
@@ -128,13 +130,13 @@ $cases = [
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
-        'errors' => 9,
+        'errors' => 11,
         'warnings' => 0,
         'sources' => [
             'CLIStandards.Arguments.FlagNaming.NonKebabCase' => 1,
             'CLIStandards.CommandStructure.CommandRegistration.MissingNamespace' => 1,
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
-            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 1,
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
+            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 2,
             'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 2,
             'CLIStandards.Output.OutputMethod.RawOutput' => 1,
             'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 2,
@@ -144,11 +146,12 @@ $cases = [
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Documentation/fail.php',
-        'errors' => 5,
+        'errors' => 7,
         'warnings' => 0,
         'sources' => [
-            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 2,
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
+            'CLIStandards.Documentation.DocblockOptions.MissingOptionsSection' => 1,
         ],
     ],
     ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/Scalability/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],

@@ -22,6 +22,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Fixed
 
+- `DocblockOptions`, `DocblockExamples` and `AvailableFields` only accept their section as a heading on its own line; a mention inside prose (e.g. "see ## OPTIONS") no longer satisfies the check (#13)
 - `$assocArgs` (camelCase) and other names for the second handler parameter are recognized as WP-CLI assoc args by the Documentation, `FlagNaming` and `FlagExtraction` sniffs (#3)
 - `ProgressBar` looks for `make_progress_bar()` only inside the enclosing function, so a progress bar in a neighboring method no longer hides a missing one (#5)
 - Docblocks followed by PHP 8 attributes (`#[...]`) are now found, removing false `MissingDocblock` errors (#6)
