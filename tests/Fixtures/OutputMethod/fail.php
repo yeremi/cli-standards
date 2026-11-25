@@ -21,6 +21,13 @@ class My_CLI_Command {
             echo $item->post_title . "\n";
         }
 
+        $this->print_footer();
+
         WP_CLI::success( 'Done.' );
+    }
+
+    private function print_footer() {
+        // ❌ VIOLATION: echo in a helper the command calls.
+        echo "--\n";
     }
 }

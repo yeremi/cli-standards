@@ -5,6 +5,19 @@
  * This file uses only WP_CLI output methods.
  */
 
+// ✅ Web code in a file that also registers commands: not CLI output.
+function acme_admin_notice() {
+    ?>
+    <div class="notice notice-error"><p>
+        <?php echo esc_html__( 'Acme requires PHP 7.4.', 'acme' ); ?>
+    </p></div>
+    <?php
+}
+
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+    WP_CLI::add_command( 'myplugin', 'My_CLI_Command' );
+}
+
 class My_CLI_Command {
 
     /**

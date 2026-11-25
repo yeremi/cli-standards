@@ -61,12 +61,12 @@ $cases = [
     [
         'standard' => 'CLIStandards',
         'fixture' => 'tests/Fixtures/OutputMethod/fail.php',
-        'errors' => 4,
+        'errors' => 5,
         'warnings' => 1,
         'sources' => [
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
             'CLIStandards.Output.FormatSupport.MissingFormatSupport' => 1,
-            'CLIStandards.Output.OutputMethod.RawOutput' => 3,
+            'CLIStandards.Output.OutputMethod.RawOutput' => 4,
         ],
     ],
     [

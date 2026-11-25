@@ -57,6 +57,7 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Methods that call `WP_CLI::add_command()` and take no assoc-args parameter are registration bootstraps, not commands, even when they also log; `WP_CLI::class` no longer counts as a WP-CLI call; `ProgressBar` ignores loops that only register commands (#30)
 - `ConfirmPassthrough` accepts `WP_CLI::confirm( $msg )` inside an `if` that checks the `yes` flag on the assoc args, e.g. `if ( ! isset( $assoc_args['yes'] ) )` (#31)
 - `CommandRegistration` accepts a single-word name for a class command group (`WP_CLI::add_command( 'acme', Acme_Command::class )`), since its methods are the namespaced subcommands; it still reports groups named after a WP-CLI core command such as `user` or `cache` (#32)
+- `OutputMethod` only reports `echo`/`print` in command handlers and the same-class methods they call, not in web code (admin notices, screens) of files that also register commands (#33)
 
 ## [1.0.0] - 2026-04-23
 
