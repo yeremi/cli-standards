@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-25
+
 ### Changed
 
 - Call arguments, array items, string literals, method scope and declaration names are parsed with PHPCSUtils (`PassedParameters`, `TextStrings`, `Scopes`, `FunctionDeclarations`, `ObjectDeclarations`) instead of hand-written token walking; reports are unchanged (#51)
@@ -121,7 +123,8 @@ Reports are removed for constructors, registration bootstraps, private/protected
 - Real-world scans on 10 local WP-CLI plugin repositories
 - Equivalence between `CLIStandardsMust` and `CLIStandards --warning-severity=0`
 
-[Unreleased]: https://github.com/yeremi/cli-standards/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/yeremi/cli-standards/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/yeremi/cli-standards/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/yeremi/cli-standards/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yeremi/cli-standards/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yeremi/cli-standards/releases/tag/v1.0.0
