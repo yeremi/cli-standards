@@ -48,7 +48,8 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -63,10 +64,7 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
-        if ($nameToken === false || $tokens[$nameToken]['code'] !== T_STRING) {
-            return;
-        }
+        $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
 
         // Bulk command: a bulk keyword is a whole word of the command name.
         if ($this->matchCommandKeyword($phpcsFile, $stackPtr, $this->bulkKeywords) === null) {
@@ -117,7 +115,7 @@ class BatchSizeFlagSniff extends AbstractCommandSniff
                 'Bulk command "%s" should accept a --batch-size (or --per-page) flag to let users tune batch volume for their environment. Default batch sizes may be too large for resource-constrained hosts.',
                 $nameToken,
                 'MissingBatchSizeFlag',
-                [$tokens[$nameToken]['content']]
+                [$this->getCommandLabel($phpcsFile, $stackPtr)]
             );
         }
     }

@@ -17,11 +17,21 @@ class Docs_Pass_Command {
     // ✅ Registration bootstrap: only calls WP_CLI::add_command().
     public static function register() {
         WP_CLI::add_command( 'myplugin docs', self::class );
+
+        // ✅ The registered closure is a command, documented through the
+        // add_command() arguments instead of a docblock.
         WP_CLI::add_command(
             'myplugin ping',
             function ( $args, $assoc_args ) {
                 WP_CLI::success( 'pong' );
-            }
+            },
+            [
+                'shortdesc' => 'Check that the plugin responds.',
+                'synopsis'  => [
+                    [ 'type' => 'flag', 'name' => 'loud', 'optional' => true ],
+                ],
+                'longdesc'  => "## EXAMPLES\n\n    wp myplugin ping --loud",
+            ]
         );
     }
 

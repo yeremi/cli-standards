@@ -57,7 +57,8 @@ class DryRunSupportSniff extends AbstractCommandSniff
      */
     public function register(): array
     {
-        return [T_FUNCTION];
+        // Closures count only when passed directly to WP_CLI::add_command().
+        return [T_FUNCTION, T_CLOSURE, T_FN];
     }
 
     /**
@@ -72,10 +73,7 @@ class DryRunSupportSniff extends AbstractCommandSniff
     {
         $tokens = $phpcsFile->getTokens();
 
-        $nameToken = $phpcsFile->findNext(T_WHITESPACE, ($stackPtr + 1), null, true);
-        if ($nameToken === false || $tokens[$nameToken]['code'] !== T_STRING) {
-            return;
-        }
+        $nameToken = $this->getReportPointer($phpcsFile, $stackPtr);
 
         if (!isset($tokens[$stackPtr]['scope_opener'], $tokens[$stackPtr]['scope_closer'])) {
             return;
@@ -129,7 +127,7 @@ class DryRunSupportSniff extends AbstractCommandSniff
             $nameToken,
             'MissingDryRun',
             [
-                $tokens[$nameToken]['content'],
+                $this->getCommandLabel($phpcsFile, $stackPtr),
                 ($delegation === '') ? ' The "@cli-standards dry-run-delegated" tag needs a reason.' : '',
             ]
         );
