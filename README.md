@@ -101,6 +101,29 @@ The implementation is intentionally heuristic in some areas. It favors practical
 
 The standard name is generic, but the current implementation is not framework-agnostic. The sniffs are tuned for codebases that expose commands through `WP_CLI`, and most checks activate only when `WP_CLI` usage is detected.
 
+### What counts as a command
+
+Sniffs that check command methods (documentation, safety, output format, batch size) follow WP-CLI's own rules for subcommands. A method is treated as a command handler when:
+
+- it is `public` (or a plain function outside a class);
+- it is not a magic method, except `__invoke`;
+- it does more than register commands (a method whose only WP-CLI calls are `WP_CLI::add_command()` / `add_hook()` is a bootstrap);
+- it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes `$assoc_args` as its second parameter.
+
+## Configuration
+
+Public methods of a registered command class are subcommands in WP-CLI, so `run()` or `services()` are checked like any other command. If a command class has public lifecycle methods that are never invoked from the command line, exclude them by name (case-insensitive) on any command-aware sniff:
+
+```xml
+<rule ref="CLIStandards.Documentation.DocblockOptions">
+    <properties>
+        <property name="ignoreMethods" type="array">
+            <element value="services"/>
+        </property>
+    </properties>
+</rule>
+```
+
 ## Add To `phpcs.xml.dist`
 
 ```xml
@@ -134,6 +157,7 @@ For contribution workflow and expectations, see `CONTRIBUTING.md`.
 ## Repository Layout
 
 - `CLIStandards/`: the main standard and sniff classes
+- `CLIStandards/Helpers/`: shared base class for command-aware sniffs (command detection, docblock lookup)
 - `CLIStandardsMust/`: blocking-only variant for staged adoption
 - `tests/Fixtures/`: regression fixtures for expected violations and clean cases
 - `scripts/verify-fixtures.php`: assertion-based test runner used by CI

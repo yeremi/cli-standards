@@ -82,8 +82,29 @@ $cases = [
             'CLIStandards.Safety.DryRunSupport.MissingDryRun' => 3,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Documentation/fail.php',
+        'errors' => 4,
+        'warnings' => 1,
+        'sources' => [
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 3,
+            'CLIStandards.Documentation.SinceAnnotation.MissingSince' => 1,
+        ],
+    ],
+    [
+        'standard' => 'tests/Fixtures/Documentation/ignore-methods.xml',
+        'fixture' => 'tests/Fixtures/Documentation/ignore-methods.php',
+        'errors' => 1,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
+        ],
+    ],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Safety/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Documentation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Comprehensive/fail.php',
@@ -100,6 +121,16 @@ $cases = [
         ],
     ],
     ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/CLILinter/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
+    [
+        'standard' => 'CLIStandardsMust',
+        'fixture' => 'tests/Fixtures/Documentation/fail.php',
+        'errors' => 4,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 3,
+        ],
+    ],
     [
         'standard' => 'CLIStandardsMust',
         'fixture' => 'tests/Fixtures/Safety/fail.php',

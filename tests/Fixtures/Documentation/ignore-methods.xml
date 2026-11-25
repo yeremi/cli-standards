@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="IgnoreMethodsFixture">
+    <description>Fixture ruleset: DocblockOptions with an ignoreMethods list.</description>
+
+    <rule ref="CLIStandards.Documentation.DocblockOptions">
+        <properties>
+            <property name="ignoreMethods" type="array">
+                <element value="services"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

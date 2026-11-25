@@ -18,10 +18,10 @@
 
 namespace CLIStandards\Sniffs\Output;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class FormatSupportSniff implements Sniff
+class FormatSupportSniff extends AbstractCommandSniff
 {
     /**
      * Method names that indicate listing commands.
@@ -91,7 +91,7 @@ class FormatSupportSniff implements Sniff
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
         // Only check CLI command handlers.
-        if (!$this->isCommandHandler($phpcsFile, $scopeStart, $scopeEnd)) {
+        if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
 
@@ -128,31 +128,6 @@ class FormatSupportSniff implements Sniff
             if ($tokens[$i]['code'] === T_CONSTANT_ENCAPSED_STRING) {
                 $val = trim($tokens[$i]['content'], "\"'");
                 if ($val === 'format') {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine if a function body contains WP-CLI indicators.
-     *
-     * @param File $phpcsFile  The file being scanned.
-     * @param int  $scopeStart Start of function body.
-     * @param int  $scopeEnd   End of function body.
-     *
-     * @return bool
-     */
-    private function isCommandHandler(File $phpcsFile, int $scopeStart, int $scopeEnd): bool
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'WP_CLI') {
-                $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
-                if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
                     return true;
                 }
             }

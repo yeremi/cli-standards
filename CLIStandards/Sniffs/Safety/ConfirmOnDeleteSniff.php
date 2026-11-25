@@ -22,10 +22,10 @@
 
 namespace CLIStandards\Sniffs\Safety;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class ConfirmOnDeleteSniff implements Sniff
+class ConfirmOnDeleteSniff extends AbstractCommandSniff
 {
     /**
      * Keywords in method names that indicate destructive semantics.
@@ -101,7 +101,7 @@ class ConfirmOnDeleteSniff implements Sniff
         $scopeStart = $tokens[$stackPtr]['scope_opener'];
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
-        if (!$this->isCommandHandler($phpcsFile, $scopeStart, $scopeEnd)) {
+        if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
 
@@ -114,31 +114,6 @@ class ConfirmOnDeleteSniff implements Sniff
                 [$tokens[$nameToken]['content'], $matchedKeyword]
             );
         }
-    }
-
-    /**
-     * Check if a function body contains WP_CLI:: method calls.
-     *
-     * @param File $phpcsFile  The file being scanned.
-     * @param int  $scopeStart Start of function body.
-     * @param int  $scopeEnd   End of function body.
-     *
-     * @return bool
-     */
-    private function isCommandHandler(File $phpcsFile, int $scopeStart, int $scopeEnd): bool
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'WP_CLI') {
-                $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
-                if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**

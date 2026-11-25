@@ -18,22 +18,11 @@
 
 namespace CLIStandards\Sniffs\Documentation;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class DocblockOptionsSniff implements Sniff
+class DocblockOptionsSniff extends AbstractCommandSniff
 {
-    /**
-     * Command method indicators — if a method body contains any of these,
-     * it is likely a WP-CLI command handler.
-     *
-     * @var array<string>
-     */
-    private $cliIndicators = [
-        'WP_CLI',
-        'assoc_args',
-    ];
-
     /**
      * Returns the token types that this sniff is interested in.
      *
@@ -54,18 +43,8 @@ class DocblockOptionsSniff implements Sniff
      */
     public function process(File $phpcsFile, $stackPtr): void
     {
-        $tokens = $phpcsFile->getTokens();
-
-        // Only process methods that have a function body.
-        if (!isset($tokens[$stackPtr]['scope_opener'], $tokens[$stackPtr]['scope_closer'])) {
-            return;
-        }
-
-        // Check if this function looks like a WP-CLI command handler.
-        $scopeStart = $tokens[$stackPtr]['scope_opener'];
-        $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
-
-        if (!$this->isCommandHandler($phpcsFile, $scopeStart, $scopeEnd)) {
+        // Only public, non-magic methods that use WP-CLI are commands.
+        if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
 
@@ -91,83 +70,5 @@ class DocblockOptionsSniff implements Sniff
                 'MissingOptionsSection'
             );
         }
-    }
-
-    /**
-     * Determine if a function body contains WP-CLI indicators.
-     *
-     * @param File $phpcsFile  The file being scanned.
-     * @param int  $scopeStart Start of function body.
-     * @param int  $scopeEnd   End of function body.
-     *
-     * @return bool
-     */
-    private function isCommandHandler(File $phpcsFile, int $scopeStart, int $scopeEnd): bool
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING || $tokens[$i]['code'] === T_VARIABLE) {
-                foreach ($this->cliIndicators as $indicator) {
-                    if (strpos($tokens[$i]['content'], $indicator) !== false) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Find the docblock comment preceding a function declaration.
-     *
-     * @param File $phpcsFile The file being scanned.
-     * @param int  $stackPtr  Position of the T_FUNCTION token.
-     *
-     * @return int|false Position of the doc comment opener, or false.
-     */
-    private function findDocblock(File $phpcsFile, int $stackPtr)
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        $skip = [
-            T_WHITESPACE,
-            T_STATIC,
-            T_PUBLIC,
-            T_PROTECTED,
-            T_PRIVATE,
-            T_ABSTRACT,
-            T_FINAL,
-        ];
-
-        $prev = $phpcsFile->findPrevious($skip, ($stackPtr - 1), null, true);
-
-        if ($prev !== false && $tokens[$prev]['code'] === T_DOC_COMMENT_CLOSE_TAG) {
-            return $tokens[$prev]['comment_opener'];
-        }
-
-        return false;
-    }
-
-    /**
-     * Extract the full text content of a docblock.
-     *
-     * @param File $phpcsFile The file being scanned.
-     * @param int  $opener    Position of the doc comment opener.
-     *
-     * @return string
-     */
-    private function getDocblockContent(File $phpcsFile, int $opener): string
-    {
-        $tokens = $phpcsFile->getTokens();
-        $closer = $tokens[$opener]['comment_closer'];
-
-        $content = '';
-        for ($i = $opener; $i <= $closer; $i++) {
-            $content .= $tokens[$i]['content'];
-        }
-
-        return $content;
     }
 }
