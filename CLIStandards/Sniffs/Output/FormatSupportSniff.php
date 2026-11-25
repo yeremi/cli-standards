@@ -76,23 +76,33 @@ class FormatSupportSniff extends AbstractCommandSniff
             return;
         }
 
-        $scopeStart = $tokens[$stackPtr]['scope_opener'];
-        $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
-
         // Only check CLI command handlers.
         if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
 
-        // Search for format_items() call in the function body.
-        if (!$this->hasFormatItems($phpcsFile, $scopeStart, $scopeEnd)) {
-            $phpcsFile->addWarning(
-                'Listing command "%s" should support --format via WP_CLI\Utils\format_items(). This enables json, csv, yaml, and table output for scripting.',
-                $nameToken,
-                'MissingFormatSupport',
-                [$tokens[$nameToken]['content']]
-            );
+        // A documented delegation to code PHPCS cannot follow (needs a reason).
+        $delegation = $this->getDelegation($phpcsFile, $stackPtr, 'format-delegated');
+        if ($delegation !== null && $delegation !== '') {
+            return;
         }
+
+        // Search for format_items() in the command and the same-class methods it calls.
+        foreach ($this->getReachableBodies($phpcsFile, $stackPtr) as [$start, $end]) {
+            if ($this->hasFormatItems($phpcsFile, $start, $end)) {
+                return;
+            }
+        }
+
+        $phpcsFile->addWarning(
+            'Listing command "%s" should support --format via WP_CLI\Utils\format_items(). This enables json, csv, yaml, and table output for scripting.%s',
+            $nameToken,
+            'MissingFormatSupport',
+            [
+                $tokens[$nameToken]['content'],
+                ($delegation === '') ? ' The "@cli-standards format-delegated" tag needs a reason.' : '',
+            ]
+        );
     }
 
     /**

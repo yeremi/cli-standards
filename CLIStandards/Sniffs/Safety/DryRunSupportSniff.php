@@ -107,17 +107,32 @@ class DryRunSupportSniff extends AbstractCommandSniff
                 || stripos($docContent, 'dry_run') !== false);
         }
 
-        // Also check function body for dry-run handling.
-        $hasDryRunBody = $this->hasDryRunInBody($phpcsFile, $scopeStart, $scopeEnd);
-
-        if (!$hasDryRunDoc && !$hasDryRunBody) {
-            $phpcsFile->addWarning(
-                'State-changing command "%s" should support --dry-run to preview changes without executing. Only 20%% of plugins implement this, but 100%% of top-tier plugins do.',
-                $nameToken,
-                'MissingDryRun',
-                [$tokens[$nameToken]['content']]
-            );
+        if ($hasDryRunDoc) {
+            return;
         }
+
+        // A documented delegation to code PHPCS cannot follow (needs a reason).
+        $delegation = $this->getDelegation($phpcsFile, $stackPtr, 'dry-run-delegated');
+        if ($delegation !== null && $delegation !== '') {
+            return;
+        }
+
+        // Also check the command and the same-class methods it calls.
+        foreach ($this->getReachableBodies($phpcsFile, $stackPtr) as [$start, $end]) {
+            if ($this->hasDryRunInBody($phpcsFile, $start, $end)) {
+                return;
+            }
+        }
+
+        $phpcsFile->addWarning(
+            'State-changing command "%s" should support --dry-run to preview changes without executing. Only 20%% of plugins implement this, but 100%% of top-tier plugins do.%s',
+            $nameToken,
+            'MissingDryRun',
+            [
+                $tokens[$nameToken]['content'],
+                ($delegation === '') ? ' The "@cli-standards dry-run-delegated" tag needs a reason.' : '',
+            ]
+        );
     }
 
     /**

@@ -679,6 +679,175 @@ abstract class AbstractCommandSniff implements Sniff
     }
 
     /**
+     * Bodies a command reaches: its own, plus same-class methods it calls.
+     *
+     * Follows $this->method(), self::method() and static::method() calls to
+     * methods declared in the same class, breadth-first, up to $maxDepth
+     * levels, visiting each method once (recursion-safe). Code in other
+     * classes cannot be followed reliably; see getDelegation().
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the command's T_FUNCTION token.
+     * @param int  $maxDepth    How many call levels to follow.
+     *
+     * @return array<int, array{0: int, 1: int}> Scope opener and closer of each body.
+     */
+    protected function getReachableBodies(File $phpcsFile, int $functionPtr, int $maxDepth = 2): array
+    {
+        $tokens = $phpcsFile->getTokens();
+        if (!isset($tokens[$functionPtr]['scope_opener'], $tokens[$functionPtr]['scope_closer'])) {
+            return [];
+        }
+
+        $methods = $this->getSiblingMethods($phpcsFile, $functionPtr);
+        $bodies  = [];
+        $visited = [$functionPtr => true];
+        $queue   = [[$functionPtr, 0]];
+
+        while ($queue !== []) {
+            [$ptr, $depth] = array_shift($queue);
+            $start = $tokens[$ptr]['scope_opener'];
+            $end   = $tokens[$ptr]['scope_closer'];
+            $bodies[] = [$start, $end];
+
+            if ($depth >= $maxDepth || $methods === []) {
+                continue;
+            }
+
+            foreach ($this->findSameClassCalls($phpcsFile, $start, $end) as $name) {
+                $target = $methods[$name] ?? null;
+                if ($target !== null && !isset($visited[$target])) {
+                    $visited[$target] = true;
+                    $queue[] = [$target, $depth + 1];
+                }
+            }
+        }
+
+        return $bodies;
+    }
+
+    /**
+     * Read a delegation declaration from the command's docblock.
+     *
+     *     @cli-standards confirm-delegated Purger::purge() calls WP_CLI::confirm()
+     *
+     * @param File   $phpcsFile   The file being scanned.
+     * @param int    $functionPtr Position of the T_FUNCTION token.
+     * @param string $kind        e.g. "confirm-delegated".
+     *
+     * @return string|null The reason (empty string when missing), or null when
+     *                     the tag is absent.
+     */
+    protected function getDelegation(File $phpcsFile, int $functionPtr, string $kind): ?string
+    {
+        $docblock = $this->findDocblock($phpcsFile, $functionPtr);
+        if ($docblock === false) {
+            return null;
+        }
+
+        $tokens = $phpcsFile->getTokens();
+        $closer = $tokens[$docblock]['comment_closer'];
+
+        for ($i = $docblock; $i < $closer; $i++) {
+            if ($tokens[$i]['code'] !== T_DOC_COMMENT_TAG || strtolower($tokens[$i]['content']) !== '@cli-standards') {
+                continue;
+            }
+
+            $value = $phpcsFile->findNext(T_DOC_COMMENT_WHITESPACE, ($i + 1), $closer, true);
+            if ($value === false || $tokens[$value]['code'] !== T_DOC_COMMENT_STRING) {
+                continue;
+            }
+
+            $parts = preg_split('/\s+/', trim($tokens[$value]['content']), 2);
+            if (strtolower($parts[0]) === strtolower($kind)) {
+                return trim($parts[1] ?? '');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Methods declared in the same class as a method, by lowercase name.
+     *
+     * @param File $phpcsFile   The file being scanned.
+     * @param int  $functionPtr Position of the T_FUNCTION token.
+     *
+     * @return array<string, int> Name => T_FUNCTION position (methods with a body only).
+     */
+    private function getSiblingMethods(File $phpcsFile, int $functionPtr): array
+    {
+        if (!$this->isMethod($phpcsFile, $functionPtr)) {
+            return [];
+        }
+
+        $tokens     = $phpcsFile->getTokens();
+        $conditions = $tokens[$functionPtr]['conditions'];
+        end($conditions);
+        $classPtr = key($conditions);
+
+        if (!isset($tokens[$classPtr]['scope_opener'], $tokens[$classPtr]['scope_closer'])) {
+            return [];
+        }
+
+        $methods = [];
+        $i       = $tokens[$classPtr]['scope_opener'];
+        $end     = $tokens[$classPtr]['scope_closer'];
+
+        while (($i = $phpcsFile->findNext(T_FUNCTION, ($i + 1), $end)) !== false) {
+            $owner = $tokens[$i]['conditions'];
+            end($owner);
+            if (key($owner) === $classPtr && isset($tokens[$i]['scope_closer'])) {
+                $name = $phpcsFile->getDeclarationName($i);
+                if ($name !== null) {
+                    $methods[strtolower($name)] = $i;
+                }
+            }
+        }
+
+        return $methods;
+    }
+
+    /**
+     * Names of methods called on the current class in a token range.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $start     First token.
+     * @param int  $end       Last token.
+     *
+     * @return array<string> Lowercase method names.
+     */
+    private function findSameClassCalls(File $phpcsFile, int $start, int $end): array
+    {
+        $tokens = $phpcsFile->getTokens();
+        $names  = [];
+
+        for ($i = $start; $i < $end; $i++) {
+            $isThis = $tokens[$i]['code'] === T_VARIABLE && $tokens[$i]['content'] === '$this';
+            $isSelf = $tokens[$i]['code'] === T_SELF || $tokens[$i]['code'] === T_STATIC;
+            if (!$isThis && !$isSelf) {
+                continue;
+            }
+
+            $operator = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), $end, true);
+            $expected = $isThis ? [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR] : [T_DOUBLE_COLON];
+            if ($operator === false || !in_array($tokens[$operator]['code'], $expected, true)) {
+                continue;
+            }
+
+            $name  = $phpcsFile->findNext(T_WHITESPACE, ($operator + 1), $end, true);
+            $paren = ($name !== false) ? $phpcsFile->findNext(T_WHITESPACE, ($name + 1), $end, true) : false;
+            if ($name !== false && $tokens[$name]['code'] === T_STRING
+                && $paren !== false && $tokens[$paren]['code'] === T_OPEN_PARENTHESIS
+            ) {
+                $names[strtolower($tokens[$name]['content'])] = true;
+            }
+        }
+
+        return array_keys($names);
+    }
+
+    /**
      * Find the innermost function, closure or arrow function around a token.
      *
      * @param File $phpcsFile The file being scanned.

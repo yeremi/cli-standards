@@ -142,6 +142,16 @@ $cases = [
             'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 1,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Delegation/fail.php',
+        'errors' => 3,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 3,
+        ],
+    ],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Delegation/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classification/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/OutputMethod/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Safety/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],

@@ -104,15 +104,29 @@ class ConfirmOnDeleteSniff extends AbstractCommandSniff
             $reason = sprintf('it calls %s', $call);
         }
 
-        // Search the function body for WP_CLI::confirm().
-        if (!$this->hasConfirmCall($phpcsFile, $scopeStart, $scopeEnd)) {
-            $phpcsFile->addError(
-                'Destructive command "%s" must call WP_CLI::confirm() before executing, because %s. This is the #1 safety gap in the WP-CLI ecosystem.',
-                $nameToken,
-                'MissingConfirm',
-                [$tokens[$nameToken]['content'], $reason]
-            );
+        // A documented delegation to code PHPCS cannot follow (needs a reason).
+        $delegation = $this->getDelegation($phpcsFile, $stackPtr, 'confirm-delegated');
+        if ($delegation !== null && $delegation !== '') {
+            return;
         }
+
+        // Look for WP_CLI::confirm() in the command and the same-class methods it calls.
+        foreach ($this->getReachableBodies($phpcsFile, $stackPtr) as [$start, $end]) {
+            if ($this->hasConfirmCall($phpcsFile, $start, $end)) {
+                return;
+            }
+        }
+
+        $phpcsFile->addError(
+            'Destructive command "%s" must call WP_CLI::confirm() before executing, because %s. This is the #1 safety gap in the WP-CLI ecosystem.%s',
+            $nameToken,
+            'MissingConfirm',
+            [
+                $tokens[$nameToken]['content'],
+                $reason,
+                ($delegation === '') ? ' The "@cli-standards confirm-delegated" tag needs a reason, e.g. which method confirms.' : '',
+            ]
+        );
     }
 
     /**
