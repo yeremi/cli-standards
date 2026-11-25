@@ -4,7 +4,9 @@
  *
  * @package CLIStandards
  *
- * Detects usage of exit(), die(), and wp_die() inside WP-CLI command files.
+ * Detects usage of exit(), die(), and wp_die() inside functions, methods and
+ * closures of WP-CLI command files. File-scope code, such as the
+ * `if ( ! defined( 'ABSPATH' ) ) { exit; }` direct-access guard, is ignored.
  *
  * WP-CLI commands must use WP_CLI::error() for fatal failures and
  * WP_CLI::warning() for non-fatal conditions. Direct exit/die bypasses
@@ -66,6 +68,16 @@ class ErrorSeveritySniff implements Sniff
         $tokens = $phpcsFile->getTokens();
         $token  = $tokens[$stackPtr];
 
+        // Only code inside a function, method or closure can run as part of a
+        // command. File-scope exits are guards such as
+        // `if ( ! defined( 'ABSPATH' ) ) { exit; }`, which only run when the
+        // file is requested directly over HTTP.
+        if (!$phpcsFile->hasCondition($stackPtr, [T_FUNCTION, T_CLOSURE])
+            && $this->findEnclosingArrowFunction($phpcsFile, $stackPtr) === false
+        ) {
+            return;
+        }
+
         if ($token['code'] === T_EXIT) {
             // T_EXIT covers both exit() and die().
             $keyword = strtolower($token['content']);
@@ -113,6 +125,30 @@ class ErrorSeveritySniff implements Sniff
             if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find an arrow function whose body contains a token (arrow functions are
+     * not part of a token's "conditions").
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Position of the token.
+     *
+     * @return int|false Position of the T_FN token, or false.
+     */
+    private function findEnclosingArrowFunction(File $phpcsFile, int $stackPtr)
+    {
+        $tokens = $phpcsFile->getTokens();
+        $fn     = $phpcsFile->findPrevious(T_FN, $stackPtr);
+
+        while ($fn !== false) {
+            if (isset($tokens[$fn]['scope_closer']) && $tokens[$fn]['scope_closer'] >= $stackPtr) {
+                return $fn;
+            }
+            $fn = $phpcsFile->findPrevious(T_FN, ($fn - 1));
         }
 
         return false;

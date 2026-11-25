@@ -6,6 +6,11 @@
  * (return types from WordPress core).
  */
 
+// ✅ Direct-access guard at file scope: never runs inside a command.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 class Error_Handling_Pass_Command {
 
     /**
