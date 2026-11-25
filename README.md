@@ -152,12 +152,13 @@ This package follows [Semantic Versioning](https://semver.org/). For a coding st
 | Release | May contain | Can add reports to unchanged code? |
 |---------|-------------|:----------------------------------:|
 | Patch (`1.1.x`) | Fixes that only remove false positives, crash fixes, documentation | No |
-| Minor (`1.x.0`) | New sniffs (as warnings), new ruleset properties, detection fixes that also catch previously missed violations | Yes, listed under **May add reports** in the [CHANGELOG](CHANGELOG.md) |
-| Major (`x.0.0`) | Renamed or removed sniffs or error codes, severity changes (warning ↔ error), changes to `CLIStandardsMust`, higher PHP or PHPCS requirements | Yes |
+| Minor (`1.x.0`) | New sniffs (as warnings), new ruleset properties, detection fixes that also catch previously missed violations, a higher minimum PHP or PHPCS version | Yes, listed under **May add reports** in the [CHANGELOG](CHANGELOG.md) |
+| Major (`x.0.0`) | Renamed or removed sniffs or error codes, severity changes (warning ↔ error), changes to `CLIStandardsMust` | Yes |
 
 Additional commitments:
 
 - New sniffs start as warnings in `CLIStandards`. They only become errors, or join `CLIStandardsMust`, in a major release.
+- Raising the minimum PHP or PHPCS version is a minor release, announced under **Requirements** in the CHANGELOG. Composer checks these requirements before installing, so projects on an older environment keep resolving the previous release instead of breaking.
 - Error codes (e.g. `CLIStandards.Safety.ConfirmOnDelete.MissingConfirm`) are stable within a major version, so `phpcs:ignore` annotations and ruleset exclusions keep working.
 
 Choosing a constraint:

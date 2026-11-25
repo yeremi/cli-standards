@@ -42,6 +42,7 @@ Users gate CI on this standard, so every behavior change is classified by its ef
 
 - **Only removes reports** (false-positive fix): patch-level. Add it under `Fixed` or `Changed` in `CHANGELOG.md`.
 - **Can add reports** (catches previously missed violations, reads more code, new sniff): minor-level at least. Also add an entry under `May add reports` in `[Unreleased]`, describing which code is newly reported.
+- **Raises the minimum PHP or PHPCS version**: minor-level. Add a `Requirements` entry in `[Unreleased]`.
 - **Renames or removes an error code, changes severity, or changes `CLIStandardsMust`**: major-level. Discuss in an issue first.
 
 New sniffs are added as warnings to `CLIStandards` only.
