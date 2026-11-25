@@ -18,10 +18,10 @@
 
 namespace CLIStandards\Sniffs\Scalability;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class BatchSizeFlagSniff implements Sniff
+class BatchSizeFlagSniff extends AbstractCommandSniff
 {
     /**
      * Keywords in method names indicating bulk/batch operations.
@@ -89,7 +89,7 @@ class BatchSizeFlagSniff implements Sniff
         $scopeStart = $tokens[$stackPtr]['scope_opener'];
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
-        if (!$this->isCommandHandler($phpcsFile, $scopeStart, $scopeEnd)) {
+        if (!$this->isCommandHandler($phpcsFile, $stackPtr)) {
             return;
         }
 
@@ -130,47 +130,5 @@ class BatchSizeFlagSniff implements Sniff
                 [$tokens[$nameToken]['content']]
             );
         }
-    }
-
-    private function isCommandHandler(File $phpcsFile, int $scopeStart, int $scopeEnd): bool
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        for ($i = $scopeStart; $i < $scopeEnd; $i++) {
-            if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === 'WP_CLI') {
-                $next = $phpcsFile->findNext(T_WHITESPACE, ($i + 1), null, true);
-                if ($next !== false && $tokens[$next]['code'] === T_DOUBLE_COLON) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private function findDocblock(File $phpcsFile, int $stackPtr)
-    {
-        $tokens = $phpcsFile->getTokens();
-        $skip   = [T_WHITESPACE, T_STATIC, T_PUBLIC, T_PROTECTED, T_PRIVATE, T_ABSTRACT, T_FINAL];
-        $prev   = $phpcsFile->findPrevious($skip, ($stackPtr - 1), null, true);
-
-        if ($prev !== false && $tokens[$prev]['code'] === T_DOC_COMMENT_CLOSE_TAG) {
-            return $tokens[$prev]['comment_opener'];
-        }
-
-        return false;
-    }
-
-    private function getDocblockContent(File $phpcsFile, int $opener): string
-    {
-        $tokens  = $phpcsFile->getTokens();
-        $closer  = $tokens[$opener]['comment_closer'];
-        $content = '';
-
-        for ($i = $opener; $i <= $closer; $i++) {
-            $content .= $tokens[$i]['content'];
-        }
-
-        return $content;
     }
 }

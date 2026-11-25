@@ -19,10 +19,10 @@
 
 namespace CLIStandards\Sniffs\Output;
 
-use PHP_CodeSniffer\Sniffs\Sniff;
+use CLIStandards\Helpers\AbstractCommandSniff;
 use PHP_CodeSniffer\Files\File;
 
-class AvailableFieldsSniff implements Sniff
+class AvailableFieldsSniff extends AbstractCommandSniff
 {
     /**
      * Listing method name keywords.
@@ -89,7 +89,9 @@ class AvailableFieldsSniff implements Sniff
         $scopeStart = $tokens[$stackPtr]['scope_opener'];
         $scopeEnd   = $tokens[$stackPtr]['scope_closer'];
 
-        if (!$this->hasFormatItems($phpcsFile, $scopeStart, $scopeEnd)) {
+        if (!$this->isCommandHandler($phpcsFile, $stackPtr)
+            || !$this->hasFormatItems($phpcsFile, $scopeStart, $scopeEnd)
+        ) {
             return;
         }
 
@@ -125,38 +127,5 @@ class AvailableFieldsSniff implements Sniff
         }
 
         return false;
-    }
-
-    /**
-     * Find the docblock preceding a function.
-     */
-    private function findDocblock(File $phpcsFile, int $stackPtr)
-    {
-        $tokens = $phpcsFile->getTokens();
-
-        $skip = [T_WHITESPACE, T_STATIC, T_PUBLIC, T_PROTECTED, T_PRIVATE, T_ABSTRACT, T_FINAL];
-        $prev = $phpcsFile->findPrevious($skip, ($stackPtr - 1), null, true);
-
-        if ($prev !== false && $tokens[$prev]['code'] === T_DOC_COMMENT_CLOSE_TAG) {
-            return $tokens[$prev]['comment_opener'];
-        }
-
-        return false;
-    }
-
-    /**
-     * Extract the full text content of a docblock.
-     */
-    private function getDocblockContent(File $phpcsFile, int $opener): string
-    {
-        $tokens  = $phpcsFile->getTokens();
-        $closer  = $tokens[$opener]['comment_closer'];
-        $content = '';
-
-        for ($i = $opener; $i <= $closer; $i++) {
-            $content .= $tokens[$i]['content'];
-        }
-
-        return $content;
     }
 }
