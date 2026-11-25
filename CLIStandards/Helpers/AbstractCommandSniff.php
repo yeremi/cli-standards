@@ -42,6 +42,14 @@ abstract class AbstractCommandSniff implements Sniff
     public $ignoreMethods = [];
 
     /**
+     * Class names (case-insensitive; short or fully qualified) whose methods
+     * are never treated as commands. Configurable from a ruleset.
+     *
+     * @var array<string>|string
+     */
+    public $ignoreClasses = [];
+
+    /**
      * Calls that destroy content, used as a behavior signal by the safety
      * sniffs (case-insensitive).
      *
@@ -150,6 +158,13 @@ abstract class AbstractCommandSniff implements Sniff
 
             // Magic methods are never subcommands, except __invoke.
             if (strpos($name, '__') === 0 && strtolower($name) !== '__invoke') {
+                return false;
+            }
+
+            // Helper classes (fetchers, utilities, ...) are not command classes.
+            $conditions = $tokens[$functionPtr]['conditions'];
+            end($conditions);
+            if (!$this->isCommandClass($phpcsFile, (int) key($conditions))) {
                 return false;
             }
         }
@@ -448,6 +463,7 @@ abstract class AbstractCommandSniff implements Sniff
     protected function splitWords(string $name): array
     {
         $name  = (string) preg_replace('/([a-z0-9])([A-Z])/', '$1 $2', $name);
+        $name  = (string) preg_replace('/([A-Z]+)([A-Z][a-z])/', '$1 $2', $name); // CLIRunner -> CLI Runner
         $words = preg_split('/[^A-Za-z0-9]+/', strtolower($name));
 
         return array_values(array_filter((array) $words, 'strlen'));
@@ -1114,6 +1130,165 @@ abstract class AbstractCommandSniff implements Sniff
         }
 
         return array_keys($names);
+    }
+
+    /**
+     * Whether a class-like scope holds WP-CLI commands.
+     *
+     * Not every command class extends WP_CLI_Command (some implement their
+     * own interface and are registered from another file), so a class counts
+     * when any of these holds:
+     * - it extends a class whose name contains "Command";
+     * - it implements an interface whose name contains "Command";
+     * - its own name has "Command(s)" or "CLI" as a word (CLIRunner, Acme_CLI);
+     * - its file registers commands with WP_CLI::add_command();
+     * - it is an anonymous class.
+     * A class is never a command class when listed in ignoreClasses or
+     * tagged "@cli-standards not-a-command" in its docblock.
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $classPtr  Position of the class-like token.
+     *
+     * @return bool
+     */
+    protected function isCommandClass(File $phpcsFile, int $classPtr): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $code   = $tokens[$classPtr]['code'];
+
+        if ($code === T_ANON_CLASS) {
+            return true;
+        }
+
+        $name = (string) $phpcsFile->getDeclarationName($classPtr);
+
+        if ($this->isIgnoredClass($phpcsFile, $classPtr, $name) || $this->isTaggedNotACommand($phpcsFile, $classPtr)) {
+            return false;
+        }
+
+        $words = $this->splitWords($name);
+        if (array_intersect($words, ['command', 'commands', 'cli']) !== []) {
+            return true;
+        }
+
+        if ($code === T_CLASS) {
+            $parent = $phpcsFile->findExtendedClassName($classPtr);
+            if ($parent !== false && stripos($parent, 'command') !== false) {
+                return true;
+            }
+        }
+
+        if ($code === T_CLASS || $code === T_ANON_CLASS) {
+            foreach ((array) $phpcsFile->findImplementedInterfaceNames($classPtr) as $interface) {
+                if (stripos($interface, 'command') !== false) {
+                    return true;
+                }
+            }
+        }
+
+        return $this->fileRegistersCommands($phpcsFile);
+    }
+
+    /**
+     * Whether the file calls WP_CLI::add_command() at all (also with
+     * non-literal names, e.g. in a loop).
+     *
+     * @param File $phpcsFile The file being scanned.
+     *
+     * @return bool
+     */
+    private function fileRegistersCommands(File $phpcsFile): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+
+        for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
+            if ($tokens[$i]['code'] !== T_STRING || strtolower($tokens[$i]['content']) !== 'add_command') {
+                continue;
+            }
+
+            $colon = $phpcsFile->findPrevious(T_WHITESPACE, ($i - 1), null, true);
+            $class = ($colon !== false) ? $phpcsFile->findPrevious(T_WHITESPACE, ($colon - 1), null, true) : false;
+            if ($class !== false && $tokens[$colon]['code'] === T_DOUBLE_COLON && $tokens[$class]['content'] === 'WP_CLI') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a class is listed in the ignoreClasses property.
+     *
+     * @param File   $phpcsFile The file being scanned.
+     * @param int    $classPtr  Position of the class-like token.
+     * @param string $name      Short class name.
+     *
+     * @return bool
+     */
+    private function isIgnoredClass(File $phpcsFile, int $classPtr, string $name): bool
+    {
+        $ignored = $this->normalizeList($this->ignoreClasses);
+        if ($ignored === [] || $name === '') {
+            return false;
+        }
+
+        $candidates = [strtolower($name)];
+
+        $namespace = $phpcsFile->findPrevious(T_NAMESPACE, $classPtr);
+        if ($namespace !== false) {
+            $end   = $phpcsFile->findNext([T_SEMICOLON, T_OPEN_CURLY_BRACKET], ($namespace + 1));
+            $parts = '';
+            for ($i = ($namespace + 1); $end !== false && $i < $end; $i++) {
+                $parts .= trim($phpcsFile->getTokens()[$i]['content']);
+            }
+            if ($parts !== '') {
+                $candidates[] = strtolower($parts . '\\' . $name);
+            }
+        }
+
+        foreach ($ignored as $entry) {
+            if (in_array(ltrim($entry, '\\'), $candidates, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a class docblock carries "@cli-standards not-a-command".
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $classPtr  Position of the class-like token.
+     *
+     * @return bool
+     */
+    private function isTaggedNotACommand(File $phpcsFile, int $classPtr): bool
+    {
+        $tokens = $phpcsFile->getTokens();
+        $skip   = [T_WHITESPACE, T_ABSTRACT, T_FINAL, T_READONLY];
+
+        $prev = $phpcsFile->findPrevious($skip, ($classPtr - 1), null, true);
+        while ($prev !== false && $tokens[$prev]['code'] === T_ATTRIBUTE_END && isset($tokens[$prev]['attribute_opener'])) {
+            $prev = $phpcsFile->findPrevious($skip, ($tokens[$prev]['attribute_opener'] - 1), null, true);
+        }
+
+        if ($prev === false || $tokens[$prev]['code'] !== T_DOC_COMMENT_CLOSE_TAG) {
+            return false;
+        }
+
+        for ($i = $tokens[$prev]['comment_opener']; $i < $prev; $i++) {
+            if ($tokens[$i]['code'] === T_DOC_COMMENT_TAG && strtolower($tokens[$i]['content']) === '@cli-standards') {
+                $value = $phpcsFile->findNext(T_DOC_COMMENT_WHITESPACE, ($i + 1), $prev, true);
+                if ($value !== false && $tokens[$value]['code'] === T_DOC_COMMENT_STRING
+                    && strtolower(strtok(trim($tokens[$value]['content']), " \t")) === 'not-a-command'
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -194,6 +194,25 @@ $cases = [
             'CLIStandards.CommandStructure.CommandRegistration.MissingNamespace' => 3,
         ],
     ],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Classes/fail.php',
+        'errors' => 4,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 4,
+        ],
+    ],
+    [
+        'standard' => 'tests/Fixtures/Classes/ignore-classes.xml',
+        'fixture' => 'tests/Fixtures/Classes/ignore-classes.php',
+        'errors' => 1,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
+        ],
+    ],
+    ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classes/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/CommandStructure/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Confirm/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/ErrorHandling/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],

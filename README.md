@@ -112,6 +112,7 @@ The standard name is generic, but the current implementation is not framework-ag
 Sniffs that check command methods (documentation, safety, output format, batch size) follow WP-CLI's own rules for subcommands. A method is treated as a command handler when:
 
 - it is `public` (or a plain function outside a class), or a closure / arrow function passed directly to `WP_CLI::add_command()`;
+- for methods, its class is a command class: it extends or implements a type whose name contains `Command`, has `Command` or `CLI` as a word in its own name, or sits in a file that calls `WP_CLI::add_command()` (helper classes such as fetchers or utilities are skipped);
 - it is not a magic method, except `__invoke`;
 - it does more than register commands (a method whose only WP-CLI calls are `WP_CLI::add_command()` / `add_hook()` is a bootstrap);
 - it uses WP-CLI (`WP_CLI::…`, `WP_CLI\…`) or takes the assoc args as its second parameter (`$assoc_args` or `$assocArgs`).
@@ -147,6 +148,25 @@ public function wipe( $args, $assoc_args ) {
 Available tags: `confirm-delegated`, `dry-run-delegated`, `format-delegated`. A tag without a reason is ignored, and the report says so. Unlike `phpcs:ignore`, the tag keeps the decision and its reason next to the command, where reviewers see it.
 
 ## Configuration
+
+If a support class is still detected as a command class (for example `Acme_CLI_Formatter`), opt it out with a class docblock tag or by name:
+
+```php
+/**
+ * @cli-standards not-a-command
+ */
+class Acme_CLI_Formatter { … }
+```
+
+```xml
+<rule ref="CLIStandards.Documentation.DocblockOptions">
+    <properties>
+        <property name="ignoreClasses" type="array">
+            <element value="Acme\Cli\Legacy_Command"/>
+        </property>
+    </properties>
+</rule>
+```
 
 Public methods of a registered command class are subcommands in WP-CLI, so `run()` or `services()` are checked like any other command. If a command class has public lifecycle methods that are never invoked from the command line, exclude them by name (case-insensitive) on any command-aware sniff:
 
