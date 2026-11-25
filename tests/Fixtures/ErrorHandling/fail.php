@@ -3,6 +3,11 @@
  * Test fixture: WpErrorHandling — should FAIL.
  */
 
+// ✅ Direct-access guard at file scope: never runs inside a command.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 class Error_Handling_Fail_Command {
 
     /**
@@ -37,5 +42,24 @@ class Error_Handling_Fail_Command {
         $term = wp_insert_term( 'News', 'category' );
 
         WP_CLI::success( "Done: {$attachment} {$term['term_id']}" );
+    }
+
+    /**
+     * Abort the import.
+     *
+     * ## OPTIONS
+     *
+     * [--code=<code>]
+     * : Exit code.
+     *
+     * ## EXAMPLES
+     *
+     *     wp acme abort --code=2
+     *
+     * @since 1.0.0
+     */
+    public function abort( $args, $assoc_args ) {
+        // ❌ D1: exit() inside a command.
+        exit( 2 );
     }
 }

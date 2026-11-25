@@ -168,9 +168,10 @@ $cases = [
     [
         'standard' => 'CLIStandards',
         'fixture' => 'tests/Fixtures/ErrorHandling/fail.php',
-        'errors' => 0,
+        'errors' => 1,
         'warnings' => 4,
         'sources' => [
+            'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 1,
             'CLIStandards.ErrorHandling.WpErrorHandling.UncapturedWpError' => 1,
             'CLIStandards.ErrorHandling.WpErrorHandling.UncheckedWpError' => 3,
         ],
@@ -229,6 +230,15 @@ $cases = [
             'CLIStandards.Documentation.DocblockExamples.MissingExamplesSection' => 1,
             'CLIStandards.Documentation.DocblockOptions.MissingDocblock' => 1,
             'CLIStandards.Safety.ConfirmOnDelete.MissingConfirm' => 1,
+        ],
+    ],
+    [
+        'standard' => 'CLIStandardsMust',
+        'fixture' => 'tests/Fixtures/ErrorHandling/fail.php',
+        'errors' => 1,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.ErrorHandling.ErrorSeverity.DirectExit' => 1,
         ],
     ],
     ['standard' => 'CLIStandardsMust', 'fixture' => 'tests/Fixtures/Scalability/fail.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
