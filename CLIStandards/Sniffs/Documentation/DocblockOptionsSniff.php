@@ -66,10 +66,16 @@ class DocblockOptionsSniff extends AbstractCommandSniff
 
         if ($docblock === false && !$documentedByArgs) {
             $phpcsFile->addError(
-                'WP-CLI command methods must have a docblock containing a "## OPTIONS" section.',
+                'WP-CLI command methods must have a docblock (with a "## OPTIONS" section when the command takes arguments).',
                 $stackPtr,
                 'MissingDocblock'
             );
+            return;
+        }
+
+        // G1 asks to document all flags: a command that reads no positional or
+        // associative arguments has nothing to put under ## OPTIONS.
+        if (!$this->readsArguments($phpcsFile, $stackPtr)) {
             return;
         }
 

@@ -115,6 +115,20 @@ class Docs_Pass_Command {
         WP_CLI\Utils\format_items( $format, [], [ 'id', 'name' ] );
     }
 
+    /**
+     * Show how long the index has been up.
+     *
+     * ## EXAMPLES
+     *
+     *     wp myplugin docs uptime
+     *
+     * @since 1.0.0
+     */
+    public function uptime() {
+        // ✅ Reads no arguments or flags: nothing to document under ## OPTIONS.
+        WP_CLI::line( 'Index is up to date.' );
+    }
+
     // ✅ Private helper: not a subcommand.
     private function format_version( string $version ): string {
         WP_CLI::debug( 'Formatting version.' );

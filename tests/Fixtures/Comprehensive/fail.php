@@ -47,6 +47,7 @@ class My_Bad_Command {
      * Reset plugin data.
      */
     public function reset( $args, $assoc_args ) {
+        // (No G1 here: the command reads no arguments, so ## OPTIONS is not required.)
         // ❌ E1: Destructive name, no confirm.
         // ❌ E2: confirm without $assoc_args (if it existed).
         WP_CLI::log( 'Resetting...' );
