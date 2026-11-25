@@ -599,7 +599,7 @@ abstract class AbstractCommandSniff implements Sniff
      * @param File $phpcsFile   The file being scanned.
      * @param int  $functionPtr Position of the T_FUNCTION/T_CLOSURE/T_FN token.
      *
-     * @return array{command: string, word: string, statement: int, synopsis: bool, shortdesc: bool, longdesc: string|null}|null
+     * @return array{command: string, word: string, statement: int, synopsis: bool, synopsisRange: array{0: int, 1: int}|null, shortdesc: bool, longdesc: string|null}|null
      */
     protected function findRegistration(File $phpcsFile, int $functionPtr): ?array
     {
@@ -656,12 +656,13 @@ abstract class AbstractCommandSniff implements Sniff
 
             $words        = preg_split('/\s+/', trim($command));
             $registration = [
-                'command'   => $command,
-                'word'      => (string) end($words),
-                'statement' => $class,
-                'synopsis'  => false,
-                'shortdesc' => false,
-                'longdesc'  => null,
+                'command'       => $command,
+                'word'          => (string) end($words),
+                'statement'     => $class,
+                'synopsis'      => false,
+                'synopsisRange' => null,
+                'shortdesc'     => false,
+                'longdesc'      => null,
             ];
 
             if (isset($arguments[2])) {
@@ -696,7 +697,7 @@ abstract class AbstractCommandSniff implements Sniff
      * @param File               $phpcsFile The file being scanned.
      * @param array{0: int, 1: int} $range  Argument token range.
      *
-     * @return array{synopsis?: bool, shortdesc?: bool, longdesc?: string}
+     * @return array{synopsis?: bool, synopsisRange?: array{0: int, 1: int}, shortdesc?: bool, longdesc?: string}
      */
     private function parseRegistrationArgs(File $phpcsFile, array $range): array
     {
@@ -721,8 +722,14 @@ abstract class AbstractCommandSniff implements Sniff
             }
 
             $key = strtolower(substr($tokens[$start]['content'], 1, -1));
-            if ($key === 'synopsis' || $key === 'shortdesc') {
-                $found[$key] = true;
+            if ($key === 'synopsis') {
+                $found['synopsis'] = true;
+                $value             = $phpcsFile->findNext(T_WHITESPACE, ($arrow + 1), ($end + 1), true);
+                if ($value !== false) {
+                    $found['synopsisRange'] = [$value, $end];
+                }
+            } elseif ($key === 'shortdesc') {
+                $found['shortdesc'] = true;
             } elseif ($key === 'longdesc') {
                 $found['longdesc'] = $this->stringLiteralText($phpcsFile, ($arrow + 1), $end);
             }
@@ -844,7 +851,7 @@ abstract class AbstractCommandSniff implements Sniff
      *
      * @return array<int, array{0: int, 1: int}> First and last non-whitespace token of each item.
      */
-    private function splitList(File $phpcsFile, int $open, int $close): array
+    protected function splitList(File $phpcsFile, int $open, int $close): array
     {
         $tokens    = $phpcsFile->getTokens();
         $arguments = [];
@@ -884,7 +891,7 @@ abstract class AbstractCommandSniff implements Sniff
      *
      * @return string|null
      */
-    private function literalString(File $phpcsFile, array $range): ?string
+    protected function literalString(File $phpcsFile, array $range): ?string
     {
         $tokens = $phpcsFile->getTokens();
 

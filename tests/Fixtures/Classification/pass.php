@@ -24,7 +24,8 @@ class Classification_Pass_Command {
      */
     public function dropdown_stats( $args, $assoc_args ) {
         // ✅ "dropdown" is not the destructive keyword "drop".
-        WP_CLI::log( 'Stats ready.' );
+        $days = WP_CLI\Utils\get_flag_value( $assoc_args, 'days', 7 );
+        WP_CLI::log( "Stats for {$days} days ready." );
     }
 
     /**
@@ -43,7 +44,8 @@ class Classification_Pass_Command {
      */
     public function nuclearCount( $args, $assoc_args ) {
         // ✅ "nuclear" contains "clear" only as a substring.
-        WP_CLI::log( '0 events.' );
+        $since = WP_CLI\Utils\get_flag_value( $assoc_args, 'since', 'today' );
+        WP_CLI::log( "0 events since {$since}." );
     }
 
     /**
@@ -63,7 +65,9 @@ class Classification_Pass_Command {
     public function refresh_feed( $args, $assoc_args ) {
         // ✅ Housekeeping deletions (options, meta, transients) are not
         // treated as destructive by default.
-        delete_option( 'acme_feed_lock' );
+        if ( WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ) ) {
+            delete_option( 'acme_feed_lock' );
+        }
         delete_transient( 'acme_feed' );
         WP_CLI::success( 'Feed refreshed.' );
     }
@@ -84,7 +88,8 @@ class Classification_Pass_Command {
      */
     public function reprocessed_count( $args, $assoc_args ) {
         // ✅ "reprocessed" is not the bulk keyword "process" (no --batch-size needed).
-        WP_CLI::log( '0' );
+        $run = WP_CLI\Utils\get_flag_value( $assoc_args, 'run', 0 );
+        WP_CLI::log( "Run {$run}: 0" );
     }
 
     /**
@@ -103,7 +108,8 @@ class Classification_Pass_Command {
      */
     public function widget_getter( $args, $assoc_args ) {
         // ✅ "getter" is not the listing keyword "get" (no --format needed).
-        WP_CLI::log( 'Configured.' );
+        $widget = WP_CLI\Utils\get_flag_value( $assoc_args, 'widget', 0 );
+        WP_CLI::log( "Widget {$widget} configured." );
     }
 
     /**
@@ -124,6 +130,7 @@ class Classification_Pass_Command {
     public function delete_candidates( $args, $assoc_args ) {
         // ✅ Users type "wp acme inspect": the @subcommand name wins over the
         // method name, and the body destroys nothing.
-        WP_CLI::log( 'Candidates: 0' );
+        $key = WP_CLI\Utils\get_flag_value( $assoc_args, 'key', '' );
+        WP_CLI::log( "Candidates for {$key}: 0" );
     }
 }

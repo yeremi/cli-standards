@@ -38,6 +38,10 @@ class Scalability_Pass_Command {
             WP_CLI::warning( $problem );
         }
 
+        if ( $problems && WP_CLI\Utils\get_flag_value( $assoc_args, 'strict', false ) ) {
+            WP_CLI::halt( 1 );
+        }
+
         WP_CLI::success( 'Environment OK.' );
     }
 

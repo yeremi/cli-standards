@@ -22,7 +22,7 @@ WP_CLI::add_command(
 );
 
 function acme_ping( $args, $assoc_args ) {
-    WP_CLI::success( 'pong' );
+    WP_CLI::success( WP_CLI\Utils\get_flag_value( $assoc_args, 'loud', false ) ? 'PONG' : 'pong' );
 }
 
 /**
@@ -41,7 +41,7 @@ function acme_ping( $args, $assoc_args ) {
  */
 WP_CLI::add_command( 'acme health', function ( $args, $assoc_args ) {
     // ✅ Closure documented by the docblock before add_command().
-    WP_CLI::success( 'Healthy.' );
+    WP_CLI::success( WP_CLI\Utils\get_flag_value( $assoc_args, 'verbose', false ) ? 'Healthy: all checks passed.' : 'Healthy.' );
 } );
 
 /**
@@ -58,7 +58,7 @@ WP_CLI::add_command( 'acme health', function ( $args, $assoc_args ) {
  *
  * @since 1.0.0
  */
-\WP_CLI::add_command( 'acme version', static fn( $args, $assoc_args ) => WP_CLI::line( '1.0.0' ) );
+\WP_CLI::add_command( 'acme version', static fn( $args, $assoc_args ) => WP_CLI::line( WP_CLI\Utils\get_flag_value( $assoc_args, 'short', false ) ? '1.0.0' : 'Acme 1.0.0' ) );
 
 /**
  * Configure the plugin.
@@ -98,6 +98,7 @@ class Acme_Registration_Command {
 
     // ✅ Method documented through the array-callable registration above.
     public static function stats( $args, $assoc_args ) {
-        WP_CLI::log( 'Stats ready.' );
+        $days = WP_CLI\Utils\get_flag_value( $assoc_args, 'days', 7 );
+        WP_CLI::log( "Stats for {$days} days ready." );
     }
 }

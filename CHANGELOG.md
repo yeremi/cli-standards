@@ -6,6 +6,14 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### May add reports
+
+- New advisory sniff `CLIStandards.Documentation.DocumentedFlags` (warnings, not in `CLIStandardsMust`): `UndocumentedFlag` for flags a command reads but does not document in its synopsis, `UnusedFlag` for documented flags it never reads (#17)
+
+### Added
+
+- DocumentedFlags fixtures (#17)
+
 ## [1.1.0] - 2026-11-25
 
 ### May add reports
