@@ -18,7 +18,7 @@ Good contributions for this repository usually fall into one of these categories
 - Keep the change scoped to one problem when possible
 - If you change sniff behavior, update or add fixtures under `tests/Fixtures/`
 - Decide whether the change can add reports to code that passes today (see below)
-- Run `composer test`
+- Run `composer test` and `composer test:docs`
 
 ## Development Setup
 
@@ -35,6 +35,8 @@ If you change an existing sniff or add a new one:
 - Prefer reducing false positives over chasing perfect coverage
 - Keep the detection logic explicit and reviewable
 - Update `README.md` when behavior or usage changes
+- Keep the sniff's reference doc in `CLIStandards/Docs/<Category>/<Sniff>Standard.xml` current (a new sniff needs one), then run `composer docs` to regenerate `docs/sniffs.md`; `composer test:docs` fails when a doc is missing or `docs/sniffs.md` is stale
+- Only add an autofix (`addFixableError()`/`addFixableWarning()`) when it cannot change behavior, and cover it with a fixture case that has a `fixed` file (see `tests/Fixtures/Autofix/`)
 
 ### Does it add reports?
 

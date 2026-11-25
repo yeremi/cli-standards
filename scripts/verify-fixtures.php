@@ -10,12 +10,14 @@ declare(strict_types=1);
  * (e.g. CLIStandards.Documentation.DocblockOptions.MissingDocblock).
  * Any source not listed in 'sources' is expected to report nothing.
  * Totals are derived from the PHPCS report and checked as well.
+ * A case with 'fixed' also runs phpcbf and compares its output with that file.
  */
 
 $verbose = in_array('--verbose', $argv, true);
 
 $root = dirname(__DIR__);
 $phpcs = $root . '/vendor/bin/phpcs';
+$phpcbf = $root . '/vendor/bin/phpcbf';
 
 if (!is_file($phpcs)) {
     fwrite(STDERR, "PHPCS binary not found at {$phpcs}. Run composer install first.\n");
@@ -243,6 +245,17 @@ $cases = [
         'sources' => [],
     ],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/DocumentedFlags/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
+    [
+        'standard' => 'CLIStandards',
+        'fixture' => 'tests/Fixtures/Autofix/fail.php',
+        'fixed' => 'tests/Fixtures/Autofix/fail.php.fixed',
+        'errors' => 11,
+        'warnings' => 0,
+        'sources' => [
+            'CLIStandards.Output.OutputMethod.RawOutput' => 8,
+            'CLIStandards.Safety.ConfirmPassthrough.MissingAssocArgs' => 3,
+        ],
+    ],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Classes/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/CommandStructure/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
     ['standard' => 'CLIStandards', 'fixture' => 'tests/Fixtures/Confirm/pass.php', 'errors' => 0, 'warnings' => 0, 'sources' => []],
@@ -380,13 +393,14 @@ foreach ($cases as $case) {
         'warnings' => (int) $report['totals']['warnings'],
     ];
 
+    // PHPCS exits with 1 when it reports, or 2 when some reports are fixable.
     $expectedExitCode = ($case['errors'] > 0 || $case['warnings'] > 0) ? 1 : 0;
     $label = $case['standard'] . ' :: ' . $fixture;
 
     if ($sourceDiff !== []
         || $actual['errors'] !== $case['errors']
         || $actual['warnings'] !== $case['warnings']
-        || $exitCode !== $expectedExitCode
+        || !($exitCode === $expectedExitCode || ($expectedExitCode === 1 && $exitCode === 2))
     ) {
         $hasFailure = true;
         fwrite(
@@ -412,6 +426,28 @@ foreach ($cases as $case) {
         }
 
         continue;
+    }
+
+    // 'fixed' => path of the file phpcbf must turn the fixture into.
+    if (isset($case['fixed'])) {
+        $fixCommand = escapeshellarg($phpcbf)
+            . ' --standard=' . escapeshellarg($standard)
+            . ' --stdin-path=' . escapeshellarg($fixturePath)
+            . ' - < ' . escapeshellarg($fixturePath) . ' 2>&1';
+
+        $fixed = [];
+        exec($fixCommand, $fixed);
+        $fixedContent    = implode("\n", $fixed) . "\n";
+        $expectedContent = (string) file_get_contents($root . '/' . $case['fixed']);
+
+        if ($fixedContent !== $expectedContent) {
+            $hasFailure = true;
+            fwrite(STDERR, "Autofix mismatch for {$label}: phpcbf output differs from {$case['fixed']}.\n");
+            if ($verbose) {
+                fwrite(STDERR, "  phpcbf output:\n" . $fixedContent);
+            }
+            continue;
+        }
     }
 
     if ($verbose) {

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<documentation title="Docblock Options">
+    <standard>
+    <![CDATA[
+    Every command needs a docblock, and one with an ## OPTIONS section when it reads its arguments. WP-CLI builds "wp help" and validates the command line from it. A synopsis (or an ## OPTIONS heading in longdesc) passed to WP_CLI::add_command() counts as well. The heading must stand on its own line.
+    
+    Requirement: G1 (MUST, error).
+    Error codes: MissingDocblock, MissingOptionsSection.
+    Properties: ignoreMethods (method names that are never commands), ignoreClasses (classes that are never command classes).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: Options documented.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ *
+ * <em>## OPTIONS</em>
+ *
+ * [--batch-size=<n>]
+ * : Posts per batch.
+ */
+    ]]>
+        </code>
+        <code title="Invalid: No options section.">
+        <![CDATA[
+/**
+ * Reindex posts.
+ */
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

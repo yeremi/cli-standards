@@ -30,3 +30,6 @@ jobs:
 
       - name: Run fixture suite
         run: composer test
+
+      - name: Check sniff docs
+        run: composer test:docs

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<documentation title="Output Method">
+    <standard>
+    <![CDATA[
+    Command code must write through the WP-CLI logger (WP_CLI::log(), ::line(), ::success(), ::error()), never echo or print. The logger respects --quiet, keeps stderr and stdout apart and is captured by WP_CLI::runcommand(). Only command handlers and the same-class methods they call are checked, so web code in the same file is not reported. Fixable: phpcbf turns a standalone echo/print of one expression whose output ends with a newline (. PHP_EOL or a trailing \n) into WP_CLI::line() without that newline; other echo/print statements are only reported, because WP_CLI::line() adds a newline.
+    
+    Requirement: C1 (MUST, error).
+    Error codes: RawOutput.
+    Properties: ignoreMethods (method names that are never commands), ignoreClasses (classes that are never command classes).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: WP-CLI logger.">
+        <![CDATA[
+<em>WP_CLI::line( $report );</em>
+    ]]>
+        </code>
+        <code title="Invalid: Raw output.">
+        <![CDATA[
+<em>echo $report;</em>
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

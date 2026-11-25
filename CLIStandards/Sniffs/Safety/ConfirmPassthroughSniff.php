@@ -82,13 +82,58 @@ class ConfirmPassthroughSniff extends AbstractCommandSniff
 
         // WP_CLI::confirm( message, $assoc_args ) requires 2 args (1 comma),
         // unless the call is guarded by an explicit --yes check.
-        if ($commaCount === 0 && !$this->isGuardedByYesFlag($phpcsFile, $stackPtr)) {
-            $phpcsFile->addError(
-                'WP_CLI::confirm() must receive $assoc_args as the second argument to enable --yes bypass in automation. Use: WP_CLI::confirm( $message, $assoc_args )',
-                $stackPtr,
-                'MissingAssocArgs'
-            );
+        if ($commaCount !== 0 || $this->isGuardedByYesFlag($phpcsFile, $stackPtr)) {
+            return;
         }
+
+        $message = 'WP_CLI::confirm() must receive $assoc_args as the second argument to enable --yes bypass in automation. Use: WP_CLI::confirm( $message, $assoc_args )';
+
+        // Fixable only when the message is there and the enclosing command
+        // handler names its assoc args, so the fix cannot pick a wrong variable.
+        $lastArg   = $phpcsFile->findPrevious(T_WHITESPACE, ($closeParen - 1), $openParen, true);
+        $assocName = $this->getFixAssocArgsName($phpcsFile, $stackPtr);
+
+        if ($lastArg === false || $assocName === null) {
+            $phpcsFile->addError($message, $stackPtr, 'MissingAssocArgs');
+            return;
+        }
+
+        $fix = $phpcsFile->addFixableError($message, $stackPtr, 'MissingAssocArgs');
+        if ($fix === true) {
+            $phpcsFile->fixer->addContent($lastArg, ', ' . $assocName);
+        }
+    }
+
+    /**
+     * Assoc-args variable to pass to confirm() in the enclosing function.
+     *
+     * The second parameter of a command handler, or a parameter of any other
+     * function named $assoc_args / $assocArgs (helpers the command passes
+     * them to).
+     *
+     * @param File $phpcsFile The file being scanned.
+     * @param int  $stackPtr  Token inside the function.
+     *
+     * @return string|null
+     */
+    private function getFixAssocArgsName(File $phpcsFile, int $stackPtr): ?string
+    {
+        $functionPtr = $this->findEnclosingCallable($phpcsFile, $stackPtr);
+        if ($functionPtr === null) {
+            return null;
+        }
+
+        if ($this->isCommandHandler($phpcsFile, $functionPtr)) {
+            return $this->getAssocArgsName($phpcsFile, $functionPtr);
+        }
+
+        foreach ($phpcsFile->getMethodParameters($functionPtr) as $parameter) {
+            if (in_array($parameter['name'], self::ASSOC_ARGS_NAMES, true)) {
+                return $parameter['name'];
+            }
+        }
+
+        return null;
     }
 
     /**

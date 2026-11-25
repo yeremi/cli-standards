@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<documentation title="Error Severity">
+    <standard>
+    <![CDATA[
+    Never call exit(), die() or wp_die() inside a command: they skip WP-CLI's shutdown and error reporting, and break WP_CLI::runcommand(). Use WP_CLI::error() for fatal failures and WP_CLI::halt( $code ) to set an exit code. exit at file scope, such as the ABSPATH direct-access guard, is not reported.
+    
+    Requirement: D1 (MUST, error).
+    Error codes: DirectExit (exit, die), WpDieInCli (wp_die()).
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: WP-CLI exit semantics.">
+        <![CDATA[
+if ( ! $ok ) {
+    <em>WP_CLI::error( 'Import failed.' );</em>
+}
+    ]]>
+        </code>
+        <code title="Invalid: Direct exit.">
+        <![CDATA[
+if ( ! $ok ) {
+    <em>exit( 1 );</em>
+}
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

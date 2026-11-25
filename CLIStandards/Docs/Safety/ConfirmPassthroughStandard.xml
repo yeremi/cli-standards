@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<documentation title="Confirm Passthrough">
+    <standard>
+    <![CDATA[
+    Pass the assoc args to WP_CLI::confirm() so --yes skips the prompt in CI and cron. Without them the prompt blocks every non-interactive run. An explicit guard such as "if ( ! isset( $assoc_args['yes'] ) )" around the call is accepted. Fixable: phpcbf adds the assoc-args variable as the second argument, when the call is in a command handler or in a function with a $assoc_args / $assocArgs parameter.
+    
+    Requirement: E2 (MUST, error).
+    Error codes: MissingAssocArgs.
+    ]]>
+    </standard>
+    <code_comparison>
+        <code title="Valid: --yes honored.">
+        <![CDATA[
+WP_CLI::confirm( 'Reset the index?'<em>, $assoc_args</em> );
+    ]]>
+        </code>
+        <code title="Invalid: --yes ignored.">
+        <![CDATA[
+WP_CLI::confirm( 'Reset the index?' <em></em>);
+    ]]>
+        </code>
+    </code_comparison>
+</documentation>

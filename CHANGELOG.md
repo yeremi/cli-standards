@@ -12,6 +12,10 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Added
 
+- Sniff reference: `CLIStandards/Docs/<Category>/<Sniff>Standard.xml` for every sniff (requirement, rationale, valid/invalid code, error codes, properties), usable with `phpcs --generator=Markdown|Text|HTML`, and the generated `docs/sniffs.md` linked from the README (#22)
+- `composer docs` regenerates `docs/sniffs.md`; `composer test:docs` (run in CI) fails when a sniff has no doc or the file is stale (#22)
+- Safe autofixes for `phpcbf`: `ConfirmPassthrough` passes the assoc args to `WP_CLI::confirm()`, and `OutputMethod` turns `echo`/`print` statements that end with a newline into `WP_CLI::line()` (#22)
+- Fixture runner can check `phpcbf` output against a `.fixed` file; Autofix fixtures (#22)
 - DocumentedFlags fixtures (#17)
 
 ### Fixed
