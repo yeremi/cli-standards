@@ -102,6 +102,13 @@ Warning-level sniffs:
 - `SinceAnnotation`
 - `DocumentedFlags` (new in 1.2.0; not part of `CLIStandardsMust`)
 
+Every sniff is described in the [sniff reference](docs/sniffs.md): the requirement it implements, why, valid and invalid code, its error codes and properties. The same text is available from PHPCS with `vendor/bin/phpcs --standard=CLIStandards --generator=Markdown` (or `Text`, `HTML`).
+
+Two reports can be fixed with `vendor/bin/phpcbf`, only where the fix cannot change behavior:
+
+- `ConfirmPassthrough`: `WP_CLI::confirm( $message )` gets the assoc args as second argument, when the call is in a command handler or in a function with a `$assoc_args` / `$assocArgs` parameter.
+- `OutputMethod`: a standalone `echo`/`print` of one expression whose output ends with a newline (`. PHP_EOL` or a trailing `\n`) becomes `WP_CLI::line()` without that newline. Other `echo`/`print` statements are only reported, since `WP_CLI::line()` would add a newline.
+
 The implementation is intentionally heuristic in some areas. It favors practical signal over deep semantic analysis, so some checks can still produce false negatives or advisory-only warnings.
 
 ## Scope
