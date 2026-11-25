@@ -12,7 +12,8 @@
  *
  * Loops that cannot be long-running are skipped:
  * - foreach over an array literal or a constant (fixed, small collections)
- * - loops whose only WP_CLI calls are messages (error/warning/line), unless
+ * - loops whose only WP_CLI calls are messages (error/warning/line) or
+ *   command registration (add_command/add_hook), unless
  *   they iterate data from an unbounded source such as get_posts()
  *
  * Rule:    Bulk loops with WP-CLI calls should display a progress bar
@@ -115,9 +116,13 @@ class ProgressBarSniff extends AbstractCommandSniff
             return;
         }
 
-        // A loop that only reports messages is not bulk processing, unless the
-        // data it walks comes from a source that can grow without bound.
-        $onlyMessages = array_diff($cliMethods, self::MESSAGING_METHODS) === [];
+        // A loop that only reports messages or registers commands is not bulk
+        // processing, unless the data it walks comes from a source that can
+        // grow without bound.
+        // In a registration loop, log/debug lines are about the registration too.
+        $registers    = array_intersect($cliMethods, self::REGISTRATION_METHODS) !== [];
+        $messages     = $registers ? array_merge(self::MESSAGING_METHODS, ['log', 'debug']) : self::MESSAGING_METHODS;
+        $onlyMessages = array_diff($cliMethods, $messages, self::REGISTRATION_METHODS) === [];
         if ($onlyMessages && !$this->iteratesUnboundedSource($phpcsFile, $stackPtr)) {
             return;
         }

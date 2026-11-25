@@ -14,6 +14,23 @@ class Docs_Pass_Command {
         WP_CLI::debug( 'Booting command class.' );
     }
 
+    // ✅ Registration bootstrap that also logs: it takes no assoc args, so it
+    // is not a command.
+    public static function register_routes() {
+        foreach ( acme_routes() as $route ) {
+            if ( empty( $route['name'] ) ) {
+                WP_CLI::debug( 'Skipping a route without a name.' );
+                continue;
+            }
+            WP_CLI::add_command( "myplugin route {$route['name']}", $route['callable'] );
+        }
+    }
+
+    // ✅ Registration through a helper: WP_CLI::class is not a WP-CLI call.
+    public static function register_through_helper() {
+        acme()->call_static( WP_CLI::class, 'add_command', 'myplugin update', [ self::class, 'version' ] );
+    }
+
     // ✅ Registration bootstrap: only calls WP_CLI::add_command().
     public static function register() {
         WP_CLI::add_command( 'myplugin docs', self::class );
